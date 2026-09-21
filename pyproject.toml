@@ -1,0 +1,80 @@
+[build-system]
+requires = ["hatchling>=1.24"]
+build-backend = "hatchling.build"
+
+[project]
+name = "book-translator"
+version = "0.1.0"
+description = "English PDF -> Turkish Markdown/EPUB translation CLI with resumable chunked translation."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+dependencies = [
+    "typer>=0.12",
+    "rich>=13.7",
+    "pydantic>=2.6",
+    "pydantic-settings>=2.2",
+    "pymupdf>=1.24",
+    "deepl>=1.18",
+    "SQLAlchemy>=2.0",
+    "ebooklib>=0.18",
+    "markdown>=3.6",
+]
+
+[project.optional-dependencies]
+marker = ["marker-pdf>=1.0"]
+local = [
+    "ctranslate2>=4.0",
+    "sentencepiece>=0.2",
+    "transformers>=4.40",
+    "huggingface-hub>=0.23",
+]
+pdf = ["weasyprint>=62"]
+dev = [
+    "pytest>=8",
+    "pytest-asyncio>=0.23",
+    "hypothesis>=6.100",
+    "mypy>=1.10",
+    "ruff>=0.5",
+    "import-linter>=2",
+    "types-Markdown",
+]
+
+[project.scripts]
+book-translator = "book_translator.cli:app"
+
+# The source tree lives in ./src and is installed under the import name
+# ``book_translator`` (design doc 02, section 1.1).
+[tool.hatch.build.targets.wheel]
+packages = ["src"]
+# Editable installs: hatchling cannot rename a prefix in dev mode, so hatch_build.py
+# ships a meta-path finder instead (dev-mode-dirs only selects hatchling's explicit path).
+dev-mode-dirs = [".hatch-editable"]
+
+[tool.hatch.build.targets.wheel.hooks.custom]
+path = "hatch_build.py"
+
+[tool.hatch.build.targets.wheel.sources]
+"src" = "book_translator"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+
+[tool.mypy]
+python_version = "3.10"
+strict = true
+warn_unreachable = true
+# ``src`` is checked as the package ``src``; internal imports inside src/ are
+# therefore relative (see README "Layout"), tests import ``book_translator``.
+files = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "W"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["book_translator"]

@@ -1,0 +1,11 @@
+# Pinned core dependencies (mirror of the pyproject "dependencies" group).
+# Regenerate after upgrading: pip freeze | grep -i -E '^(typer|rich|pydantic|pydantic-settings|pymupdf|deepl|SQLAlchemy|EbookLib|Markdown)=='
+typer==0.27.2
+rich==15.0.0
+pydantic==2.13.5
+pydantic-settings==2.15.0
+pymupdf==1.28.2
+deepl==1.32.0
+SQLAlchemy==2.0.54
+EbookLib==0.20
+Markdown==3.10.3

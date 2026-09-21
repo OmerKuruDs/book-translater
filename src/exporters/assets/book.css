@@ -1,0 +1,161 @@
+/* book-translator: shared stylesheet for EPUB and PDF output (design doc 02, 8.3 step 5).
+   No fixed body font size here: the PDF engines set body { font-size } from the
+   source-derived options; headings scale from it (1.6 / 1.3 / 1.15 em). */
+
+html {
+  font-family: "DejaVu Serif", "Noto Serif", Georgia, "Times New Roman", serif;
+  line-height: 1.5;
+  -webkit-hyphens: auto;
+  hyphens: auto;
+}
+
+body {
+  margin: 0 1em;
+  color: #111;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: "DejaVu Sans", "Noto Sans", Arial, Helvetica, sans-serif;
+  line-height: 1.25;
+  page-break-after: avoid;
+}
+
+h1 {
+  font-size: 1.6em;
+  margin: 1.5em 0 0.8em;
+  text-align: center;
+}
+
+h2 {
+  font-size: 1.3em;
+  margin: 1.3em 0 0.6em;
+}
+
+h3 {
+  font-size: 1.15em;
+  margin: 1.1em 0 0.5em;
+}
+
+p {
+  margin: 0 0 0.8em;
+  text-align: justify;
+}
+
+blockquote {
+  margin: 0.8em 1.5em;
+  padding-left: 0.8em;
+  border-left: 3px solid #999;
+  color: #333;
+}
+
+pre {
+  font-family: "DejaVu Sans Mono", "Noto Sans Mono", Consolas, monospace;
+  font-size: 0.85em;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  background: #f4f4f4;
+  border: 1px solid #ddd;
+  padding: 0.6em;
+  margin: 0.8em 0;
+}
+
+code {
+  font-family: "DejaVu Sans Mono", "Noto Sans Mono", Consolas, monospace;
+  font-size: 0.9em;
+}
+
+table {
+  border-collapse: collapse;
+  margin: 0.8em auto;
+  width: 100%;
+  font-size: 0.9em;
+}
+
+th, td {
+  border: 1px solid #999;
+  padding: 0.3em 0.5em;
+  text-align: left;
+  vertical-align: top;
+}
+
+th {
+  background: #eee;
+}
+
+hr {
+  border: 0;
+  border-top: 1px solid #999;
+  margin: 1.5em 20%;
+}
+
+ul, ol {
+  margin: 0 0 0.8em 1.2em;
+  padding-left: 1em;
+}
+
+.untranslated {
+  border: 2px dashed #b00;
+  background: #fff4f4;
+  padding: 0.5em 0.8em;
+  margin: 1em 0;
+}
+
+.untranslated > blockquote {
+  border-left-color: #b00;
+  color: #b00;
+  font-family: "DejaVu Sans", "Noto Sans", Arial, sans-serif;
+  font-size: 0.9em;
+}
+
+.figure-placeholder {
+  font-style: italic;
+  text-align: center;
+  color: #555;
+  margin: 1em 0;
+}
+
+figure.figure {
+  margin: 1em 0;
+  text-align: center;
+  page-break-inside: avoid;
+}
+
+figure.figure img {
+  max-width: 100%;
+  height: auto;
+}
+
+figcaption {
+  font-size: 0.9em;
+  color: #333;
+  margin-top: 0.4em;
+}
+
+.figure-legend {
+  font-size: 0.85em;
+  color: #333;
+  margin: 0 0 1em 1.5em;
+  padding-left: 0.8em;
+  border-left: 2px solid #ccc;
+}
+
+.figure-legend ul {
+  margin: 0 0 0.4em 0;
+  list-style: none;
+  padding-left: 0;
+}
+
+.figure-legend p {
+  margin: 0;
+  font-style: italic;
+  text-align: left;
+}
+
+.footnote {
+  font-size: 0.85em;
+  margin-top: 2em;
+}
+
+.footnote hr {
+  margin: 1em 0;
+}
