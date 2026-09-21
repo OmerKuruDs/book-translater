@@ -229,3 +229,31 @@ Orkestratör `tests/test_migration.py`'de hatalı metin dilimlemesiyle dosyanın
 
 ### Doğrulama
 749 test geçti / 1 skip, mypy strict 60 dosya, ruff temiz.
+
+---
+
+## Sözlük bağlanmıyordu (2026-09-21) — identity girdi filtresi
+
+`--glossary` ile 807 terimlik dosya veriliyor, yükleniyor, hash'i kaydediliyor — ama **hiç uygulanmıyordu**. 48 sayfalık tam koşuda 794 birimin hepsi `glossary_strategy = 'none'` çıktı ve terimler Türkçeye çevrildi ("bilgisayar gör…" 10 kez, "demet ayarlama" 10 kez). 123.644 karakter sözlüksüz harcandı.
+
+**Kök neden:** `translators/deepl_translator.py` `_glossary_entries`, kaynak ile hedefi aynı olan girdileri atıyordu ("identity entries are dropped", doc 02 §7.4). Tasarım bunları işlevsiz saymış. Değil: DeepL için identity girdi "**bu terimi olduğu gibi bırak**" demektir ve bir terim sözlüğünün başlıca işi budur. 807 terimin hepsi identity olduğu için sözlük tamamen boşalıp `GlossaryStrategy.NONE`'a düştü.
+
+**Düzeltme:** identity girdiler korunuyor (boş hedef ve tekrar eden kaynak hâlâ atılıyor). Tasarım sapması `_glossary_entries` docstring'inde gerekçesiyle kayıtlı. Eski davranışı sabitleyen `test_deepl_prepare_creates_when_absent_with_clean_entries` gerekçeyle güncellendi; yeni `test_a_glossary_of_only_identity_entries_still_binds` eklendi.
+
+**Ders:** doğrudan DeepL'e yaptığım deney çalışıyordu ama aracın filtresinden geçmiyordu. Tam koşudan önce küçük bir koşuyla `strategy native` doğrulanmalıydı.
+
+### Tam kitap çevirisi — nihai sonuç (`docs/test2_final/`)
+`run -i docs/test-2.pdf --mode overlay --format pdf-overlay --glossary glossaries/ai-ml.en-tr.json`
+
+| | |
+|---|---|
+| Birim | 794/794 tamam, 0 başarısız (556 native sözlük, 238 kept) |
+| Karakter | 123.644 |
+| Sayfa | 48 → 48, dil `tr`, 1,91 MB |
+| Yerleşim | placed 553, shrunk 29, could_not_fit 4, kept 241 (exit 2 = kısmi) |
+| Görsel / çizim | 63 → 64 raster, 214 → 214 vektör |
+| `glossary_miss` | 10 birim (DeepL cümleyi yeniden kurunca terim kaçıyor) |
+
+Terim tutma (İngilizce kalan / Türkçeye çevrilen): computer vision 10/0 · homography 15/0 · bundle adjustment 9/0 · image stitching 28/1 · image alignment 16/5 · feature matching 3/1 · optical flow 0/3 (kaçan). Sözlüksüz koşuda bu sayılar tersineydi.
+
+Doğrulama: 752 test / 1 skip, mypy strict 60 dosya, ruff temiz.

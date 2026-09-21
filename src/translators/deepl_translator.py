@@ -162,12 +162,21 @@ def classify_deepl_exception(exc: BaseException) -> AppError:
 
 
 def _glossary_entries(glossary: EffectiveGlossary) -> Dict[str, str]:
-    """De-duplicated, trimmed entries; identity entries and empties are dropped (7.4)."""
+    """De-duplicated, trimmed entries; empties are dropped.
+
+    An *identity* entry (``source == target``) is kept, against the letter of design doc 02
+    section 7.4, which called it a no-op. It is not one: for DeepL it is the way to say
+    "leave this term alone", which is what a technical glossary is mostly for - without it
+    "computer vision" comes back as "bilgisayar görme" and "object detection" as "nesne
+    algılama". Measured: with the identity entries bound, both survive in English and DeepL
+    still attaches the Turkish case suffix ("feature matching'e"). Dropping them silently
+    turned a whole glossary into ``GlossaryStrategy.NONE``.
+    """
     entries: Dict[str, str] = {}
     for entry in glossary.entries:
         source = entry.source.strip()
         target = entry.target.strip()
-        if not source or not target or source == target or source in entries:
+        if not source or not target or source in entries:
             continue
         entries[source] = target
     return entries

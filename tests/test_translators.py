@@ -456,6 +456,13 @@ async def test_deepl_prepare_reuses_ready_glossary_with_same_name() -> None:
 
 
 async def test_deepl_prepare_creates_when_absent_with_clean_entries() -> None:
+    """Empty targets are dropped, sources are trimmed - and an identity entry is *kept*.
+
+    This test used to assert that ``("Same", "Same")`` is dropped as a no-op, following
+    design doc 02 section 7.4. It is not a no-op: an identity entry is how a glossary says
+    "leave this term in English", which is what a technical glossary is mostly for. Dropping
+    them turned a 807-term terminology file into ``GlossaryStrategy.NONE`` and the terms came
+    back translated."""
     client = FakeDeepLClient()
     g = glossary(("Dragon", "Ejderha"), (" Sword ", "Kılıç"), ("Same", "Same"), ("Empty", " "))
     binding = unwrap(await make_deepl(client).prepare(g, "run"))
@@ -463,8 +470,19 @@ async def test_deepl_prepare_creates_when_absent_with_clean_entries() -> None:
     assert binding.provider_glossary_id == "g-new"
     assert client.created == [
         {"name": glossary_name_for("h" * 64), "source": "EN", "target": "TR",
-         "entries": {"Dragon": "Ejderha", "Sword": "Kılıç"}}
+         "entries": {"Dragon": "Ejderha", "Sword": "Kılıç", "Same": "Same"}}
     ]
+
+
+async def test_a_glossary_of_only_identity_entries_still_binds() -> None:
+    """The shape of ``glossaries/ai-ml.en-tr.json``: every term maps to itself."""
+    client = FakeDeepLClient()
+    g = glossary(("computer vision", "computer vision"), ("object detection", "object detection"))
+    binding = unwrap(await make_deepl(client).prepare(g, "run"))
+    assert binding.strategy == GlossaryStrategy.NATIVE  # not NONE
+    assert client.created[0]["entries"] == {
+        "computer vision": "computer vision", "object detection": "object detection",
+    }
 
 
 async def test_deepl_prepare_failure_is_job_fatal() -> None:
