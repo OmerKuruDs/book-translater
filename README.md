@@ -161,6 +161,48 @@ python -m venv .venv
 never pruned automatically.
 
 
+## Keeping technical terms in English
+
+Machine translation turns established jargon into literal Turkish: *computer vision* becomes
+"bilgisayar görme", *object detection* becomes "nesne algılama", *zero-shot detection* becomes
+"sıfır örneklemeyle algılama". Readers who learned the field in English find that harder to
+follow, not easier.
+
+A glossary entry whose `target` equals its `source` tells the provider to leave the term alone.
+Two ready-made lists ship with the repo:
+
+| File | Terms | Scope |
+|---|---|---|
+| `glossaries/computer-vision.en-tr.json` | 239 | hand-written computer-vision list |
+| `glossaries/ai-ml.en-tr.json` | 807 | the above plus the term names of Google's ML Glossary |
+
+```
+book-translator run -i book.pdf -o out --mode overlay     --glossary glossaries/ai-ml.en-tr.json
+```
+
+Measured on real book text, same sentence:
+
+| | Output |
+|---|---|
+| without | "**bilgisayar görme** alanında … **nesne algılama** ve **sıfır örneklemeyle algılama**" |
+| with | "**computer vision** alanında … **object detection** ve **zero-shot detection**" |
+
+DeepL attaches Turkish case suffixes by itself (`feature matching'e`, `bounding boxlar`).
+
+**Single generic words are left out on purpose.** `cost`, `depth`, `class`, `label`, `loss`,
+`state`, `step`, `weight`, `baseline` and ~200 others would also match ordinary prose — "the
+cost of the lens" must stay "lensin maliyeti". Only multi-word terms, acronyms and unambiguous
+single words are kept.
+
+**The provider applies a glossary on a best-effort basis.** When it rephrases a sentence the
+term can still slip through. Every miss is reported as `glossary_miss:<term>`, and
+`--strict-glossary` also flags the chunk for review.
+
+The files are plain JSON — edit them, or point `--glossary` at your own. The same mechanism
+enforces a *chosen* Turkish wording: give the entry a different `target`
+(`{"source": "image", "target": "görüntü"}`) and every occurrence follows it. A user glossary
+wins over the terms `book-translator glossary` discovers in the book itself.
+
 ## Test fixtures
 
 The test suite uses PDF fixtures that are **not** in this repository: they are pages of a
@@ -190,14 +232,16 @@ python -m ruff check src tests
 * **Typeface changes.** Overlay text is written with the built-in serif (Charis SIL), not the
   source font. `--pdf-font` takes your own font (it must cover Turkish).
 * **Running headers stay English** by default; `--overlay-translate-headers` turns them on.
-* **Leftover source text next to a shortened block.** Two painted rectangles are never allowed
-  to overlap, so the larger one is cut back. Redaction currently follows the *cut* rectangle,
-  which can leave the English glyphs of the removed strip on the page beside the translation.
-  Known, reproducible on a page where an inline fragment splits a paragraph.
 * **Scanned PDFs are out of scope** — overlay mode needs a real text layer, and a PDF whose
   permission bits forbid modification is refused before any provider contact.
 
 ## Licence
+
+`glossaries/ai-ml.en-tr.json` derives part of its term list from Google's Machine Learning
+Glossary (<https://developers.google.com/machine-learning/glossary>), published under
+CC BY 4.0. Only the term names are used, each mapped to itself; the definitions are not
+redistributed.
+
 
 No licence has been chosen yet, so default copyright applies: the code is public to read, but
 not yet licensed for reuse. Open an issue if you need one.

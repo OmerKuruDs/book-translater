@@ -174,6 +174,36 @@ Uygulamadan gelen dört ek (hepsi ölçümle gerekçeli): `_hangs_off_prose` (sa
 ### Şema v2 → v3
 `keep_reason` CHECK kısıtına `"math"` eklendi. SQLite CHECK'i tablo DDL'inde tuttuğu için mevcut v2 dosyaları yeni değeri **reddederdi**. `CURRENT_SCHEMA_VERSION = 3`, `_upgrade_v2_to_v3` `overlay_blocks`'u satırları koruyarak yeniden inşa ediyor. `test_20_v2_file_widens_keep_reason_to_math` bunu kanıtlıyor (göç devre dışı bırakılınca test düşüyor — mutasyonla doğrulandı).
 
+### Kısaltılmış bloğun yanındaki artık kaynak metin (2026-09-21)
+Overlay çıktısında, kutusu bir komşusuna karşı kısaltılan bir bloğun **kesilen şeritteki İngilizce glifleri sayfada kalıyordu**. Somut kanıt: `docs/test-2-math.pdf` s.1 (kitap s.404), `#33` birimi `y=(340,380)` iken `#32` ile çakıştığı için `y=(367,380)`'e kısalıyor, geriye kalan `y=(340,367)` şeridi hiç redakte edilmiyordu → "and its corresponding current *predicted* location" / "least squares and Appendix B.2" sayfada İngilizce duruyordu.
+
+Kök neden: tek bir kutu hem yerleştirme hem redaksiyon için kullanılıyordu (`domain/overlay.py` `OverlayBlock.bbox`).
+
+**Çözüm — iki ayrı dikdörtgen** (`extractors/cleanup.py` `split_overlapping_rects` artık `(placement_rects, redact_rects, unpaintable)` dönüyor):
+
+| Kutu | Neye karşı kısalır |
+|---|---|
+| yerleştirme (`bbox`) | *kept* birimlere **ve** *boyanan* komşulara karşı |
+| redaksiyon (`redact_bbox`, YENİ) | **yalnız kept** birimlere karşı |
+
+Matematik bandı gibi *kept* bir birime karşı kısaltma her ikisine de uygulanıyor — yoksa redaksiyon denklemi siler (yukarıdaki düzeltmenin geri gelmesi olurdu). İki boyanan birimin redaksiyon kutuları çakışabilir: redaksiyon, herhangi bir yerleştirmeden önce hepsi için tek geçişte uygulanıyor. Çakışma yüzünden boyanmaktan vazgeçilen birimler (`keep_reason="no_bbox"` / `overlap_kept`) hiç redakte edilmiyor. Bir kesim bloğun kendi yerleştirme kutusunu yiyecek olursa yapılmıyor: o birim tam olarak bastığı alanı redakte ediyor (eski davranış).
+
+### Şema v3 → v4
+`overlay_blocks` tablosuna tek nullable TEXT kolon: `redact_bbox` (JSON `[x0,y0,x1,y1]`, `NULL` = yerleştirme kutusuyla aynı). Additive `ALTER TABLE ADD COLUMN`, tablo yeniden inşası yok; `CURRENT_SCHEMA_VERSION = 4`, `_upgrade_v3_to_v4`, `READ_ONLY_ACCEPTED_VERSIONS = (1, 2, 3)` (salt-okunur `status` overlay tablolarını yalnız toplama sorgularıyla okuyor). `jobs.overlay_sha256` imzası **değişmedi** — `redact_bbox` türetilmiş bir değer. Kolon `sort_order=100` ile metadata'nın sonuna konuluyor ki taze dosya ile göç edilmiş dosyanın `PRAGMA table_info`'su aynı kalsın (O-19). Testler: `test_21_v3_file_gains_the_redaction_rect_column`, `test_21_migrating_a_v3_file_matches_a_fresh_one`.
+
+### Ölçüm — A/B, aynı çeviri metinleriyle
+`docs/test-2-math.pdf` (4 sayfa) tek bir canlı DeepL çalıştırmasıyla çevrildi, sonra aynı birimler iki kez basıldı: `redact_bbox` ile ve `redact_bbox=None` (eski davranış) ile.
+
+| | `redact_bbox` ile | `redact_bbox` olmadan |
+|---|---|---|
+| sayfada kalan İngilizce artık | **yok** | "corresponding current", "least squares and Appendix" |
+| yerleştirilen / kept / could_not_fit | 55 / 41 / 0 | 55 / 41 / 0 |
+| inceleme girdisi | 52 | 52 |
+
+Yani düzeltme yalnız artığı kaldırıyor, başka hiçbir kararı değiştirmiyor. Geometri regresyonu da yok: `docs/test-2.pdf` 794 birim / 556 çevrilecek / yerleştirme çakışması 0, `docs/test_doc.pdf` 43 / 34 / 0 — referans değerlerle birebir aynı. 72 birimin redaksiyon kutusu genişledi, hiçbiri bir kept birime değmiyor.
+
+Gözle (s.1, 120 dpi): `y≈340–380` bölgesinde İngilizce kalmadı; (8.4), (8.5) `E_LLS = Σᵢ ‖J(xᵢ)p − Δxᵢ‖²`, (8.6)–(8.9) ve üstteki tablo bozulmadı; üst üste binme yok.
+
 ### Sonuç — aynı 4 sayfada önce/sonra
 | Bulgu | Önce | Sonra |
 |---|---|---|
@@ -198,4 +228,4 @@ Aynı gün: `strip_control_chars()` (`translators/protect.py`) — XML 1.0'ın y
 Orkestratör `tests/test_migration.py`'de hatalı metin dilimlemesiyle dosyanın bir bölümünü sildi (`test_18`, `test_18b`, `test_18c`, `build_v1_file` gövdesi ve 8 yardımcı). Depo git olmadığı için geri alınamadı. `tests/__pycache__/test_migration.cpython-311.pyc` bayt kodundan yeniden kuruldu (466 satır); kurtarma sırasında `.pyc` kopyaları `import` ile üzerine yazıldığı için **ikinci bir kurtarma şansı yok**. Yeniden kurulan testlerin gerçekten koruduğu mutasyonla doğrulandı (v1→v2 `ADD COLUMN` devre dışı → `test_18`/`test_18d`/`test_19` düştü). Bayt kodda iz bırakmayan yorum satırları yeniden yazıldı, kod satırlarının tamamı bayt koddan türetildi. **Ders: bu depo git altına alınmalı.**
 
 ### Doğrulama
-730 test geçti / 1 skip, mypy strict 60 dosya, ruff temiz.
+749 test geçti / 1 skip, mypy strict 60 dosya, ruff temiz.

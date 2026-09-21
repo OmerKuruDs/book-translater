@@ -50,7 +50,10 @@ ARCHIVE_DIR_NAME = "state-archive"
 SQLITE_MIN_VERSION = (3, 8, 0)
 
 #: Schema versions a read-only open accepts without migrating (doc 07, B15 / D18).
-READ_ONLY_ACCEPTED_VERSIONS: Tuple[int, ...] = (1, 2)
+#: Only ``status`` opens read-only, and it reads ``overlay_blocks`` through aggregates
+#: alone - a version listed here must therefore survive every *aggregate* query, not a
+#: whole-row load (a v3 file has no ``redact_bbox`` column).
+READ_ONLY_ACCEPTED_VERSIONS: Tuple[int, ...] = (1, 2, 3)
 
 TXN_MODE_OPTION = "sqlite_txn_mode"
 TXN_IMMEDIATE = "IMMEDIATE"
@@ -308,10 +311,37 @@ def _upgrade_v2_to_v3(conn: Connection, ctx: MigrationContext) -> None:
         conn.exec_driver_sql(str(CreateIndex(index, if_not_exists=True).compile(dialect=dialect)))
 
 
+_V4_ADD_COLUMNS: Tuple[Tuple[str, str, str], ...] = (
+    ("overlay_blocks", "redact_bbox", "TEXT"),
+)
+
+
+def _upgrade_v3_to_v4(conn: Connection, ctx: MigrationContext) -> None:
+    """3 -> 4: ``overlay_blocks.redact_bbox``, the rect a unit's source glyphs are cleared
+    from when it differs from the placement rect.
+
+    A unit whose rect was cut back against a *painted* neighbour used to be redacted over
+    the cut rect, which left the source glyphs of the removed strip on the page beside the
+    translation. The new column carries the wider redaction rect; ``NULL`` keeps the old
+    meaning ("same as the placement rect"), so no row is rewritten. Additive
+    ``ALTER TABLE ... ADD COLUMN``, guarded by ``PRAGMA table_info`` like the 1 -> 2 step;
+    a v3 file that never held the overlay tables is skipped.
+    """
+    present: Dict[str, set[str]] = {}
+    for table_name, column, definition in _V4_ADD_COLUMNS:
+        if table_name not in present:
+            present[table_name] = _existing_columns(conn, table_name)
+        if not present[table_name] or column in present[table_name]:
+            continue  # table absent (nothing to extend) or column already there
+        conn.exec_driver_sql(f"ALTER TABLE {table_name} ADD COLUMN {column} {definition}")
+        present[table_name].add(column)
+
+
 MIGRATIONS: Dict[int, MigrationStep] = {
     0: _create_current,
     1: _upgrade_v1_to_v2,
     2: _upgrade_v2_to_v3,
+    3: _upgrade_v3_to_v4,
 }
 
 

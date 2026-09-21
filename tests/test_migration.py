@@ -17,7 +17,7 @@ from sqlalchemy import Connection, Engine, event
 
 from book_translator.database import models as m
 from book_translator.database import session as session_module
-from book_translator.database.repository import JobRepository
+from book_translator.database.repository import JobRepository, OverlayBlockRepository
 from book_translator.database.session import (
     ARCHIVE_DIR_NAME,
     MigrationContext,
@@ -25,7 +25,7 @@ from book_translator.database.session import (
     open_database,
 )
 from book_translator.domain.result import Err, ErrorCode, unwrap
-from tests.conftest import TOOL_VERSION, capture_statements, raw_rows
+from tests.conftest import RUN_ID, TOOL_VERSION, capture_statements, raw_rows
 
 FIXTURES = Path(__file__).resolve().parent / "fixtures"
 V1_SCHEMA_SQL = FIXTURES / "v1_schema.sql"
@@ -157,6 +157,11 @@ def table_names(path: Path) -> List[str]:
         )
 
 
+def _column_names(path: Path, table: str) -> List[str]:
+    with sqlite3.connect(path) as raw:
+        return [str(r[1]) for r in raw.execute(f"PRAGMA table_info({table})")]
+
+
 def _table_info(path: Path, table: str) -> List[Tuple[Any, ...]]:
     with sqlite3.connect(path) as raw:
         return [tuple(r[1:6]) for r in raw.execute(f"PRAGMA table_info({table})")]
@@ -232,7 +237,7 @@ def test_18_migration_round_trip(tmp_path: Path, source: str) -> None:
 
     db = unwrap(open_database(path, tool_version=TOOL_VERSION))
     try:
-        assert db.schema_version == m.CURRENT_SCHEMA_VERSION == 3
+        assert db.schema_version == m.CURRENT_SCHEMA_VERSION == 4
         assert schema_version_of(path) == m.CURRENT_SCHEMA_VERSION
         meta = raw_rows(
             db,
@@ -337,7 +342,7 @@ def test_18c_read_only_versions(v1_path: Path, tmp_path: Path) -> None:
     ro = unwrap(open_database(v1_path, read_only=True, tool_version=TOOL_VERSION))
     close_database(ro)
     assert ro.schema_version == 1 and schema_version_of(v1_path) == 1
-    assert session_module.READ_ONLY_ACCEPTED_VERSIONS == (1, 2)
+    assert session_module.READ_ONLY_ACCEPTED_VERSIONS == (1, 2, 3)
 
     newer = tmp_path / "newer.db"
     build_v1_file(newer, seed=False)
@@ -459,8 +464,83 @@ def test_20_v2_file_widens_keep_reason_to_math(tmp_path: Path) -> None:
 
     db = unwrap(open_database(path, tool_version=TOOL_VERSION))
     close_database(db)
-    assert schema_version_of(path) == m.CURRENT_SCHEMA_VERSION == 3
+    assert schema_version_of(path) == m.CURRENT_SCHEMA_VERSION == 4
     with sqlite3.connect(path) as raw:
         raw.execute(block_sql, block_params)
         raw.commit()
         assert raw.execute("SELECT COUNT(*) FROM overlay_blocks").fetchone()[0] == 1
+
+
+def test_21_v3_file_gains_the_redaction_rect_column(tmp_path: Path) -> None:
+    """3 -> 4: ``overlay_blocks.redact_bbox``, added without rewriting a row.
+
+    A v3 file has one rect per unit, used for placement *and* redaction, which left the
+    source glyphs of a shortened block on the page. The upgrade appends one nullable TEXT
+    column; ``NULL`` keeps the old meaning, so every existing row stays exactly as it is."""
+    path = tmp_path / "translation_state.db"
+    fresh = unwrap(open_database(path, tool_version=TOOL_VERSION))
+    close_database(fresh)
+
+    # drop the file back to v3: remove the column and the version bump
+    with sqlite3.connect(path) as raw:
+        raw.execute(
+            "INSERT INTO jobs (id, singleton, input_path, input_sha256, status, tool_version,"
+            " warnings, created_at, updated_at)"
+            " VALUES (?, 1, 'C:/books/in.pdf', ?, 'TRANSLATING', '0.1.0-v1', '[]', ?, ?)",
+            (JOB_ID, "a" * 64, TS, TS),
+        )
+        raw.execute(
+            "INSERT INTO overlay_pages (page, job_id, width, height, rotation, has_text_layer,"
+            " block_count, translatable_count, body_size, created_at)"
+            " VALUES (1, ?, 595.0, 842.0, 0, 1, 1, 1, 10.0, ?)",
+            (JOB_ID, TS),
+        )
+        raw.execute(
+            "INSERT INTO overlay_blocks (id, job_id, page, index_on_page, kind, translate,"
+            " x0, y0, x1, y1, font_size, family, color, alignment, source_text, content_hash,"
+            " char_count, status, created_at, updated_at)"
+            " VALUES (1, ?, 1, 1, 'body', 1, 10, 20, 30, 40, 10.0, 'serif', '#000000', 'left',"
+            " 'Some source text', ?, 16, 'PENDING', ?, ?)",
+            (JOB_ID, "h" * 64, TS, TS),
+        )
+        raw.execute("ALTER TABLE overlay_blocks DROP COLUMN redact_bbox")
+        raw.execute("UPDATE schema_meta SET schema_version = 3 WHERE id = 1")
+        raw.commit()
+    assert "redact_bbox" not in _column_names(path, "overlay_blocks")
+
+    db = unwrap(open_database(path, tool_version=TOOL_VERSION))
+    close_database(db)
+    assert schema_version_of(path) == m.CURRENT_SCHEMA_VERSION == 4
+    with sqlite3.connect(path) as raw:
+        assert "redact_bbox" in _column_names(path, "overlay_blocks")
+        row = raw.execute(
+            "SELECT id, source_text, x0, y0, x1, y1, redact_bbox FROM overlay_blocks"
+        ).fetchall()
+        assert row == [(1, "Some source text", 10.0, 20.0, 30.0, 40.0, None)]
+        # the new column is writable and reads back through the repository layer
+        raw.execute("UPDATE overlay_blocks SET redact_bbox = '[10,5,30,40]' WHERE id = 1")
+        raw.commit()
+    with_column = unwrap(open_database(path, tool_version=TOOL_VERSION))
+    try:
+        blocks = list(OverlayBlockRepository(with_column, RUN_ID, None).iter_page(JOB_ID, 1))
+    finally:
+        close_database(with_column)
+    assert [b.redact_bbox for b in blocks] == [(10.0, 5.0, 30.0, 40.0)]
+
+
+def test_21_migrating_a_v3_file_matches_a_fresh_one(tmp_path: Path) -> None:
+    """The ``ADD COLUMN`` lands where ``create_all`` puts it (O-19 for the 3 -> 4 step)."""
+    fresh_path = tmp_path / "fresh" / "translation_state.db"
+    fresh_path.parent.mkdir()
+    close_database(unwrap(open_database(fresh_path, tool_version=TOOL_VERSION)))
+    migrated_path = tmp_path / "migrated" / "translation_state.db"
+    migrated_path.parent.mkdir()
+    close_database(unwrap(open_database(migrated_path, tool_version=TOOL_VERSION)))
+    with sqlite3.connect(migrated_path) as raw:
+        raw.execute("ALTER TABLE overlay_blocks DROP COLUMN redact_bbox")
+        raw.execute("UPDATE schema_meta SET schema_version = 3 WHERE id = 1")
+        raw.commit()
+    close_database(unwrap(open_database(migrated_path, tool_version=TOOL_VERSION)))
+    assert _table_info(fresh_path, "overlay_blocks") == _table_info(
+        migrated_path, "overlay_blocks"
+    )

@@ -84,7 +84,7 @@ class OverlayBlock:
     page: int
     index_on_page: int
     kind: OverlayBlockKind
-    bbox: BBox  # union of line boxes (redaction/placement rect)
+    bbox: BBox  # union of line boxes, pulled off every neighbour: the *placement* rect
     line_boxes: Tuple[BBox, ...]
     style: OverlayStyle
     alignment: OverlayAlignment
@@ -95,6 +95,15 @@ class OverlayBlock:
     keep_reason: Optional[str]  # one of OVERLAY_KEEP_REASONS when translate is False
     fragment: bool  # E-42
     over_image: bool  # E-40 (informational)
+    redact_bbox: Optional[BBox] = None
+    """The rect the source glyphs are removed from; ``None`` means "same as ``bbox``".
+
+    ``bbox`` is pulled off *every* neighbour, painted ones included, so that two
+    translations never print on top of each other. The strip a painted neighbour cut away
+    still holds this unit's source glyphs, though, and nobody paints over them - so
+    redaction keeps the original rect there and gives way to *kept* units only (a math
+    band, a page number, a unit that lost its rect). Derived from the page geometry, not
+    part of ``overlay_sha256``."""
     # runtime state (persisted, DB only): the same fields as Chunk
     status: ChunkStatus = ChunkStatus.PENDING
     retry_count: int = 0

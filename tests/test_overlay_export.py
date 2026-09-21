@@ -169,6 +169,7 @@ def make_block(
         keep_reason=keep_reason if not translate else None,
         fragment=bool(extra.get("fragment", False)),
         over_image=bool(extra.get("over_image", False)),
+        redact_bbox=extra.get("redact_bbox"),
         status=status if translate else ChunkStatus.COMPLETED,
         translated_text=(translated if status is ChunkStatus.COMPLETED else None)
         if translate else source,
@@ -1609,6 +1610,76 @@ def test_collateral_redaction_is_reported_for_both_units(tmp_path: Path) -> None
                   if e.reason is OverlayReviewReason.COLLATERAL_REDACTION]
     assert sorted(e.unit_id for e in collateral) == sorted([placed.unit_id, kept.unit_id])
     assert OverlayReviewReason.COLLATERAL_REDACTION in artifact.placements[0].reasons
+
+
+def _leftover_fixture(tmp_path: Path) -> Tuple[Path, BBox, BBox]:
+    """A page with two rows: the row a unit is placed into and the row a painted
+    neighbour cut off its rect. Returns ``(pdf, placement_rect, original_rect)``."""
+    doc = pymupdf.open()
+    page = doc.new_page(width=300, height=200)
+    page.insert_text((40, 60), "LEFTOVER", fontsize=12, fontname="tiro")
+    page.insert_text((40, 90), "Short label", fontsize=12, fontname="tiro")
+    path = tmp_path / "leftover.pdf"
+    doc.save(str(path))
+    upper, lower = (line["bbox"] for line in _lines(doc[0])[:2])
+    doc.close()
+    original = (
+        min(upper[0], lower[0]), upper[1], max(upper[2], lower[2]), lower[3]
+    )
+    return path, lower, original
+
+
+def test_redaction_follows_the_wider_rect_and_clears_the_leftover(tmp_path: Path) -> None:
+    """The bug: a unit shortened against a painted neighbour left the English glyphs of the
+    strip it lost on the page. With ``redact_bbox`` the whole original rect is cleared,
+    while the text is still written into the (shortened) placement rect."""
+    path, placement, original = _leftover_fixture(tmp_path)
+    block = make_block(
+        1, 0, placement, "Short label", "Kısa etiket", size=12.0, redact_bbox=original
+    )
+    artifact = render(path, [block], tmp_path / "out")
+    doc = pymupdf.open(str(artifact.pdf_path))
+    text = doc[0].get_text()
+    doc.close()
+    assert "LEFTOVER" not in text and "Kısa etiket" in text
+
+
+def test_without_a_wider_rect_only_the_placement_rect_is_cleared(tmp_path: Path) -> None:
+    """The control of the test above: ``redact_bbox is None`` means "same as ``bbox``", so
+    the row outside the placement rect keeps its source glyphs - the old behaviour."""
+    path, placement, _ = _leftover_fixture(tmp_path)
+    block = make_block(1, 0, placement, "Short label", "Kısa etiket", size=12.0)
+    assert block.redact_bbox is None
+    artifact = render(path, [block], tmp_path / "out")
+    doc = pymupdf.open(str(artifact.pdf_path))
+    text = doc[0].get_text()
+    doc.close()
+    assert "LEFTOVER" in text
+
+
+def test_a_unit_that_lost_its_rect_is_never_redacted(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A unit kept because its rect could not be freed (``keep_reason="no_bbox"``,
+    ``overlap_kept``) shows its source text: nothing may be redacted for it."""
+    path, placement, original = _leftover_fixture(tmp_path)
+    seen: List[Sequence[BBox]] = []
+    real = _placement.redact
+
+    def spy(doc: Any, page: Any, rects: Sequence[BBox]) -> Tuple[Any, int]:
+        seen.append(list(rects))
+        return real(doc, page, rects)
+
+    monkeypatch.setattr(_placement, "redact", spy)
+    placed = make_block(
+        1, 0, placement, "Short label", "Kısa etiket", size=12.0, redact_bbox=original
+    )
+    crushed = make_block(1, 1, (200.0, 20.0, 260.0, 34.0), "KEPT", None, size=12.0,
+                         keep_reason="no_bbox")
+    artifact = render(path, [placed, crushed], tmp_path / "out")
+    assert seen == [[original]]  # the kept unit contributes no rect at all
+    assert any(e.unit_id == crushed.unit_id and e.reason is OverlayReviewReason.KEPT_ORIGINAL
+               for e in artifact.review)
 
 
 def test_existing_redaction_annotation_keeps_every_property(tmp_path: Path) -> None:

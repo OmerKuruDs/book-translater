@@ -411,11 +411,24 @@ class OverlayRenderer:
         rotation = pdfkit.page_rotation(page)
         derotation = pdfkit.page_derotation_matrix(page) if rotation else None
 
-        def pdf_rect(block: OverlayBlock) -> BBox:
+        def unrotate(rect: BBox) -> BBox:
             # stored rects are in the orientation the reader sees; MuPDF works unrotated
             if derotation is None:
-                return block.bbox
-            return pdfkit.transform_rect(block.bbox, derotation)
+                return rect
+            return pdfkit.transform_rect(rect, derotation)
+
+        def pdf_rect(block: OverlayBlock) -> BBox:
+            return unrotate(block.bbox)
+
+        def redact_rect(block: OverlayBlock) -> BBox:
+            """What the block's source glyphs are cleared from.
+
+            Wider than the placement rect whenever a *painted* neighbour cut that one back:
+            the strip taken away still holds this block's English glyphs and nobody paints
+            over it, so redaction keeps the original extent there. It gives way to *kept*
+            units (a math band, a page number) exactly like the placement rect does -
+            :func:`cleanup.split_overlapping_rects` builds both."""
+            return unrotate(block.redact_bbox or block.bbox)
 
         widgets = pdfkit.page_widget_rects(page)
         candidates: List[OverlayBlock] = []
@@ -480,7 +493,7 @@ class OverlayRenderer:
             block.unit_id: _placement.normalise(_placement.clip_text(page, pdf_rect(block)))
             for block in untouched
         }
-        page, preserved = _placement.redact(doc, page, [plan.spec.rect for _, plan in to_place])
+        page, preserved = _placement.redact(doc, page, [redact_rect(b) for b, _ in to_place])
         counts.redact_annots_preserved += preserved
         reinserted = _reinsert_links(page, links_before)
         counts.links_reinserted += reinserted
@@ -497,8 +510,8 @@ class OverlayRenderer:
             if after != before_texts[block.unit_id]:
                 entries.append(_entry(block, OverlayReviewReason.COLLATERAL_REDACTION,
                                       note="neighbour redaction changed this unit"))
-                for placed, plan in to_place:
-                    if _placement.intersects(plan.spec.rect, pdf_rect(block)):
+                for placed, _ in to_place:
+                    if _placement.intersects(redact_rect(placed), pdf_rect(block)):
                         collateral[placed.unit_id] = True
 
         # 4-5: insertion, shrink policy, glyph check

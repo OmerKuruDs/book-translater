@@ -2,10 +2,11 @@
 
 Units are built from the *lines* of ``page.get_text("dict")`` (never from pymupdf
 blocks, E6/E-39): lines are grouped greedily by vertical succession, every group
-becomes one unit with the union of its line boxes as redaction/placement rect, and
-overlapping neighbour rects are split so they are disjoint. Kinds, styles, alignment
-and the translate decision are pure functions of ``cleanup.py``; this module only
-reads the PDF (through ``pdfkit.api``) and assembles the value objects.
+becomes one unit with the union of its line boxes as its rect, and overlapping
+neighbour rects are split so that the placement rects are disjoint (the redaction
+rect gives way to kept units only, so no source glyph is left beside a translation).
+Kinds, styles, alignment and the translate decision are pure functions of ``cleanup.py``;
+this module only reads the PDF (through ``pdfkit.api``) and assembles the value objects.
 
 Display (block) mathematics is the one thing that is *not* grouped that way: the rows
 of an equation are collected into a band that becomes a single kept unit
@@ -964,7 +965,7 @@ def _process_page(
         if unit.keep_reason is None and _is_header_guess(index, units, raw, ctx):
             unit.warnings.append(HEADER_GUESS_WARNING)
 
-    rects, unpaintable = split_overlapping_rects(
+    rects, redact_rects, unpaintable = split_overlapping_rects(
         [u.bbox for u in units],
         painted=[u.keep_reason is None for u in units],
         min_heights=[_min_rect_height(u) for u in units],
@@ -985,6 +986,7 @@ def _process_page(
     blocks: List[OverlayBlock] = []
     for index, unit in enumerate(units):
         rect = _rounded(rects[index])
+        redact = _rounded(redact_rects[index])
         style: OverlayStyle = detect_style(unit.lines)
         alignment: OverlayAlignment = detect_alignment(_row_boxes(unit.lines), unit.container)
         fragment = False
@@ -1021,6 +1023,9 @@ def _process_page(
                 keep_reason=keep,
                 fragment=fragment,
                 over_image=any(_intersection(rect, box) > 0 for box in image_boxes),
+                # the strip a painted neighbour cut off `rect` still holds this unit's
+                # source glyphs: redaction keeps it (None when the two rects agree)
+                redact_bbox=None if redact == rect else redact,
                 warnings=tuple(unit.warnings),
             )
         )

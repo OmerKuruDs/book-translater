@@ -109,6 +109,7 @@ def make_block(
     style: OverlayStyle = STYLE,
     alignment: OverlayAlignment = OverlayAlignment.LEFT,
     bbox: Tuple[float, float, float, float] = (72.0, 100.0, 300.0, 124.0),
+    redact_bbox: Optional[Tuple[float, float, float, float]] = None,
     line_boxes: Sequence[Tuple[float, float, float, float]] = ((72.0, 100.0, 300.0, 112.0),),
     fragment: bool = False,
     over_image: bool = False,
@@ -125,6 +126,7 @@ def make_block(
         index_on_page=index_on_page,
         kind=kind,
         bbox=bbox,
+        redact_bbox=redact_bbox,
         line_boxes=tuple(line_boxes),
         style=style,
         alignment=alignment,
@@ -286,8 +288,9 @@ def test_01_schema_objects_and_runtime_parity(mem_db: Database) -> None:
     row_id, version, tool, created = meta[0]
     assert (row_id, version, tool) == (1, m.CURRENT_SCHEMA_VERSION, TOOL_VERSION)
     assert len(created) == 27 and created.endswith("Z")
-    # pinned on purpose: a bump must be a conscious decision (v3 widened keep_reason)
-    assert mem_db.schema_version == m.CURRENT_SCHEMA_VERSION == 3
+    # pinned on purpose: a bump must be a conscious decision (v3 widened keep_reason,
+    # v4 added overlay_blocks.redact_bbox)
+    assert mem_db.schema_version == m.CURRENT_SCHEMA_VERSION == 4
 
     ddl = {name: sql for kind, name, sql in rows if kind == "table"}
     for name in (
@@ -915,6 +918,27 @@ def test_13_iterators(mem_db: Database, job: JobRecord, overlay: OverlayBlockRep
 # --------------------------------------------------------------------------- #
 # 14. replace_all
 # --------------------------------------------------------------------------- #
+
+
+def test_14a_redaction_rect_round_trip(
+    mem_db: Database, job: JobRecord, overlay: OverlayBlockRepository
+) -> None:
+    """v4: ``redact_bbox`` survives a write/read cycle and stores ``NULL`` when it adds
+    nothing - the column carries the *difference* to the placement rect, not a copy."""
+    bbox = (72.0, 100.0, 300.0, 124.0)
+    wider = (72.0, 88.0, 300.0, 124.0)
+    pages = [make_page(1, 3, 3)]
+    units = [
+        make_block(1, 1, 1, bbox=bbox, redact_bbox=wider),
+        make_block(2, 1, 2, bbox=bbox),  # None: same as bbox
+        make_block(3, 1, 3, bbox=bbox, redact_bbox=bbox),  # spelled out: stored as NULL
+    ]
+    assert unwrap(overlay.replace_all(job.id, units, pages=pages)) == 3
+    stored = raw_rows(mem_db, "SELECT id, redact_bbox FROM overlay_blocks ORDER BY id")
+    assert stored == [(1, "[72.0,88.0,300.0,124.0]"), (2, None), (3, None)]
+    read = list(overlay.iter_page(job.id, 1))
+    assert [u.redact_bbox for u in read] == [wider, None, None]
+    assert all(u.bbox == bbox for u in read)
 
 
 def test_14_replace_all(mem_db: Database, job: JobRecord, overlay: OverlayBlockRepository) -> None:

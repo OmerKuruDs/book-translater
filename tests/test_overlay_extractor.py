@@ -445,10 +445,12 @@ def _disjoint(a: BBox, b: BBox) -> bool:
 def test_split_overlapping_rects() -> None:
     upper: BBox = (100.0, 100.0, 200.0, 114.5)
     lower: BBox = (100.0, 114.1, 200.0, 128.0)
-    (a, b), dropped = split_overlapping_rects([upper, lower])
+    (a, b), red, dropped = split_overlapping_rects([upper, lower])
     assert a[3] == pytest.approx(114.3) and b[1] == pytest.approx(114.3) and dropped == []
+    assert red == [upper, lower]  # two painted rects: redaction keeps the original extent
     side: BBox = (210.0, 100.0, 300.0, 114.5)
-    assert split_overlapping_rects([upper, side]) == ([upper, side], [])  # no x overlap
+    # no x overlap: nothing to split, and redaction follows the placement rects
+    assert split_overlapping_rects([upper, side]) == ([upper, side], [upper, side], [])
 
 
 def test_split_overlapping_rects_splits_a_large_crossing() -> None:
@@ -457,9 +459,10 @@ def test_split_overlapping_rects_splits_a_large_crossing() -> None:
     other crossing. Before CR-overlap this case was left alone, which is the bug."""
     upper: BBox = (100.0, 100.0, 200.0, 114.5)
     stacked: BBox = (100.0, 105.0, 200.0, 119.0)
-    (a, b), dropped = split_overlapping_rects([upper, stacked])
+    (a, b), red, dropped = split_overlapping_rects([upper, stacked])
     assert a[3] == pytest.approx(109.75) and b[1] == pytest.approx(109.75)
     assert dropped == [] and _disjoint(a, b)
+    assert red == [upper, stacked]
 
 
 def test_split_overlapping_rects_shortens_the_container() -> None:
@@ -467,9 +470,11 @@ def test_split_overlapping_rects_shortens_the_container() -> None:
     so it is cut back to where the equation begins - the side the contained rect sits on."""
     paragraph: BBox = (114.7, 444.6, 536.7, 513.4)
     equation: BBox = (218.5, 496.5, 296.5, 513.4)
-    (cut, kept), dropped = split_overlapping_rects([paragraph, equation])
+    (cut, kept), red, dropped = split_overlapping_rects([paragraph, equation])
     assert cut == (114.7, 444.6, 536.7, pytest.approx(496.5))
     assert kept == equation and dropped == [] and _disjoint(cut, kept)
+    # both are painted here, so the paragraph is still redacted over its whole extent
+    assert red == [paragraph, equation]
 
 
 def test_split_overlapping_rects_leaves_real_columns_alone() -> None:
@@ -477,10 +482,11 @@ def test_split_overlapping_rects_leaves_real_columns_alone() -> None:
     touched (only the sliver is halved), or every table would lose its rows."""
     left: BBox = (57.0, 100.0, 280.0, 400.0)
     right: BBox = (278.0, 100.0, 500.0, 400.0)
-    (a, b), dropped = split_overlapping_rects([left, right])
+    (a, b), red, dropped = split_overlapping_rects([left, right])
     assert (a[1], a[3]) == (100.0, 400.0) and (b[1], b[3]) == (100.0, 400.0)
     assert a[2] == pytest.approx(279.0) and b[0] == pytest.approx(279.0)
     assert dropped == [] and _disjoint(a, b)
+    assert red == [left, right]
 
 
 def test_split_overlapping_rects_trims_the_painted_side_of_a_sliver() -> None:
@@ -488,8 +494,10 @@ def test_split_overlapping_rects_trims_the_painted_side_of_a_sliver() -> None:
     rect alone, because the kept rect is the one whose glyphs stay on the page."""
     painted_rect: BBox = (57.0, 100.0, 280.0, 400.0)
     kept: BBox = (278.0, 100.0, 500.0, 400.0)
-    rects, dropped = split_overlapping_rects([painted_rect, kept], painted=[True, False])
+    rects, red, dropped = split_overlapping_rects([painted_rect, kept], painted=[True, False])
     assert rects == [(57.0, 100.0, pytest.approx(278.0), 400.0), kept] and dropped == []
+    # a kept neighbour shortens the redaction rect too - its glyphs must survive
+    assert red == rects
 
 
 def test_split_overlapping_rects_never_moves_a_kept_rect() -> None:
@@ -497,10 +505,11 @@ def test_split_overlapping_rects_never_moves_a_kept_rect() -> None:
     painted neighbour is the one that is cut back."""
     paragraph: BBox = (100.0, 100.0, 400.0, 200.0)
     band: BBox = (150.0, 160.0, 300.0, 200.0)
-    rects, dropped = split_overlapping_rects(
+    rects, red, dropped = split_overlapping_rects(
         [paragraph, band], painted=[True, False], min_heights=[6.0, 6.0]
     )
     assert rects == [(100.0, 100.0, 400.0, pytest.approx(160.0)), band] and dropped == []
+    assert red == rects  # the band is never redacted, so the paragraph stops above it
 
 
 def test_split_overlapping_rects_keeps_the_smaller_unit_when_the_cut_would_crush() -> None:
@@ -508,11 +517,58 @@ def test_split_overlapping_rects_keeps_the_smaller_unit_when_the_cut_would_crush
     rect is reported unpaintable and keeps its source text instead."""
     paragraph: BBox = (100.0, 100.0, 400.0, 130.0)
     fragment: BBox = (150.0, 102.0, 200.0, 129.0)
-    rects, dropped = split_overlapping_rects(
+    rects, red, dropped = split_overlapping_rects(
         [paragraph, fragment], painted=[True, True], min_heights=[12.0, 12.0]
     )
     assert rects == [paragraph, fragment]  # untouched
     assert dropped == [1]  # the smaller of the two is the one that is not painted
+    # the dropped unit is never redacted itself (it carries its own rect, never a wider
+    # one); the paragraph cannot give way to it without exposing its own glyphs, so it
+    # redacts exactly what it paints - the behaviour before the two rects were split
+    assert red == [paragraph, fragment]
+
+
+def test_redaction_rect_keeps_the_strip_a_painted_neighbour_took() -> None:
+    """The bug this split exists for: a block shortened against a *painted* neighbour used
+    to be redacted over the shortened rect, leaving its source glyphs in the strip that was
+    cut away. The placement rect still gives way; the redaction rect does not."""
+    upper: BBox = (115.0, 340.0, 325.0, 380.0)  # translated, cut back by the wide one
+    lower: BBox = (115.0, 367.0, 537.0, 380.0)
+    (pa, pb), (ra, rb), dropped = split_overlapping_rects(
+        [upper, lower], painted=[True, True], min_heights=[6.0, 6.0]
+    )
+    assert dropped == [] and _disjoint(pa, pb)  # placement rects still pulled apart
+    assert pa[3] < upper[3] or pb[1] > lower[1]
+    assert (ra, rb) == (upper, lower)  # redaction covers every source glyph of both
+
+
+def test_redaction_rect_still_gives_way_to_a_kept_unit() -> None:
+    """A display equation is kept (``keep_reason="math"``), so its glyphs must survive. The
+    redaction rect of the paragraph around it is cut back exactly like the placement rect -
+    redacting the band would wipe the equation off the page."""
+    paragraph: BBox = (114.7, 444.6, 536.7, 513.4)
+    band: BBox = (218.5, 496.5, 296.5, 513.4)
+    placement, redaction, dropped = split_overlapping_rects(
+        [paragraph, band], painted=[True, False], min_heights=[6.0, 6.0]
+    )
+    assert dropped == []
+    assert redaction == placement == [(114.7, 444.6, 536.7, pytest.approx(496.5)), band]
+    assert _disjoint(redaction[0], band)
+
+
+def test_redaction_rect_widens_only_against_painted_neighbours() -> None:
+    """Both at once: a kept band above and a painted neighbour below. The placement rect
+    stops at both; the redaction rect stops at the band only."""
+    band: BBox = (100.0, 100.0, 400.0, 120.0)  # kept
+    paragraph: BBox = (100.0, 110.0, 400.0, 200.0)  # painted, overlaps both
+    neighbour: BBox = (100.0, 190.0, 400.0, 240.0)  # painted
+    placement, redaction, dropped = split_overlapping_rects(
+        [band, paragraph, neighbour], painted=[False, True, True], min_heights=[6.0, 6.0, 6.0]
+    )
+    assert dropped == []
+    assert placement[1] == (100.0, pytest.approx(120.0), 400.0, pytest.approx(195.0))
+    assert redaction[1] == (100.0, pytest.approx(120.0), 400.0, 200.0)
+    assert redaction[0] == placement[0] == band  # the kept unit is never redacted
 
 
 def test_alignment_rules() -> None:
@@ -1041,6 +1097,40 @@ def test_no_painted_rect_overlaps_another_on_the_real_document(
     crushed = [b for b in math_doc.blocks if OVERLAP_KEPT_WARNING in b.warnings]
     assert crushed, "the fallback path is part of what keeps the invariant on this document"
     assert all(not b.translate and b.keep_reason == "no_bbox" for b in crushed)
+
+
+def test_no_redaction_rect_reaches_a_kept_unit_on_the_real_document(
+    math_doc: OverlayExtraction,
+) -> None:
+    """The companion invariant of the one above, for the *redaction* rect (docs/test-2.pdf).
+
+    Every translated unit is cleared over at least its placement rect - otherwise its own
+    English glyphs stay under the Turkish text - and never over a unit that keeps its
+    source text, so no math band or page number is wiped. Page 19 (Szeliski p.404) is the
+    page the split was written for: unit #33 there is shortened against #32 and must still
+    be redacted over its original rows."""
+    per_page: Dict[int, List[OverlayBlock]] = {}
+    for block in math_doc.blocks:
+        per_page.setdefault(block.page, []).append(block)
+    widened: List[str] = []
+    for blocks in per_page.values():
+        for block in blocks:
+            if not block.translate:
+                assert block.redact_bbox is None, block.block_id
+                continue
+            rect = block.redact_bbox or block.bbox
+            assert rect[0] <= block.bbox[0] and rect[1] <= block.bbox[1], block.block_id
+            assert rect[2] >= block.bbox[2] and rect[3] >= block.bbox[3], block.block_id
+            if block.redact_bbox is not None:
+                widened.append(block.block_id)
+            for other in blocks:
+                if other is block or other.translate:
+                    continue
+                assert _disjoint(rect, other.bbox), f"{block.block_id} redacts {other.block_id}"
+    assert widened, "no unit was shortened against a painted neighbour - the split is untested"
+    page_19 = {b.block_id: b for b in per_page[19]}
+    shortened = page_19["p019-b033"]
+    assert shortened.redact_bbox is not None and shortened.redact_bbox[1] < shortened.bbox[1]
 
 
 def test_a_document_without_math_fonts_has_no_bands(test_doc: OverlayExtraction) -> None:

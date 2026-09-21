@@ -34,7 +34,7 @@ from sqlalchemy.engine.interfaces import Dialect
 from sqlalchemy.orm import DeclarativeBase, Mapped, declared_attr, mapped_column
 from sqlalchemy.types import Boolean, TypeDecorator
 
-CURRENT_SCHEMA_VERSION = 3
+CURRENT_SCHEMA_VERSION = 4
 
 TIMESTAMP_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"
 TIMESTAMP_LENGTH = 27
@@ -208,6 +208,41 @@ Box = Tuple[float, float, float, float]
 
 def _is_number(value: Any) -> bool:
     return isinstance(value, (int, float)) and not isinstance(value, bool)
+
+
+class JsonBox(TypeDecorator[Box]):
+    """Nullable TEXT column holding one JSON ``[x0, y0, x1, y1]`` array (doc 07, section 3.6).
+
+    The single-box sibling of :class:`JsonBoxes`, with the same contract: a 4-tuple of
+    numbers in, a 4-tuple of ``float`` out, ``ValueError`` -> ``INTERNAL`` on a bad bind and
+    ``CorruptValueError`` -> ``STATE_CORRUPT`` on a bad read. ``NULL`` is a value of its own
+    (``overlay_blocks.redact_bbox``: "same as the placement rect").
+    """
+
+    impl = Text
+    cache_ok = True
+
+    def process_bind_param(self, value: Optional[Any], dialect: Dialect) -> Optional[str]:
+        if value is None:
+            return None
+        if isinstance(value, (str, bytes)) or not isinstance(value, (list, tuple)):
+            raise ValueError(f"JsonBox expects a 4-item list/tuple, got {type(value).__name__}")
+        if len(value) != 4 or not all(_is_number(n) for n in value):
+            raise ValueError("JsonBox expects four numeric coordinates")
+        return json.dumps([float(n) for n in value], separators=(",", ":"))
+
+    def process_result_value(self, value: Optional[str], dialect: Dialect) -> Optional[Box]:
+        if value is None:
+            return None
+        try:
+            decoded: Any = json.loads(value)
+        except (TypeError, ValueError) as exc:
+            raise CorruptValueError("stored JSON box cannot be decoded") from exc
+        if not isinstance(decoded, list) or len(decoded) != 4 or not all(
+            _is_number(n) for n in decoded
+        ):
+            raise CorruptValueError("stored JSON box is not four numbers")
+        return (float(decoded[0]), float(decoded[1]), float(decoded[2]), float(decoded[3]))
 
 
 class JsonBoxes(TypeDecorator[Tuple[Box, ...]]):
@@ -757,6 +792,11 @@ class OverlayBlock(RuntimeStateMixin, Base):
     content_hash: Mapped[str] = mapped_column(String(64), nullable=False)
     char_count: Mapped[int] = mapped_column(Integer, nullable=False)
     # runtime-state group: RuntimeStateMixin
+    # v4, appended last (``sort_order``) so that a fresh file and an ``ADD COLUMN`` upgrade
+    # produce the same ``PRAGMA table_info`` (acceptance check O-19)
+    redact_bbox: Mapped[Optional[Box]] = mapped_column(JsonBox, sort_order=100)
+    """The rect the source glyphs are removed from; ``NULL`` = the placement rect
+    (``x0, y0, x1, y1``). Derived geometry, never part of ``jobs.overlay_sha256``."""
 
     __table_args__ = (
         CheckConstraint("id >= 1", name="ck_overlay_blocks_id"),

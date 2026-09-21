@@ -1256,6 +1256,7 @@ def _to_block(row: m.OverlayBlock) -> OverlayBlock:
         index_on_page=row.index_on_page,
         kind=OverlayBlockKind(row.kind),
         bbox=(row.x0, row.y0, row.x1, row.y1),
+        redact_bbox=row.redact_bbox,
         line_boxes=tuple(row.line_boxes),
         style=OverlayStyle(
             font_size=row.font_size,
@@ -1456,6 +1457,8 @@ def _block_row(job_id: str, unit: OverlayBlock, now: datetime) -> Dict[str, Any]
         "y0": unit.bbox[1],
         "x1": unit.bbox[2],
         "y1": unit.bbox[3],
+        # NULL when the two rects agree: the column only carries the difference
+        "redact_bbox": None if unit.redact_bbox == unit.bbox else unit.redact_bbox,
         "line_boxes": tuple(unit.line_boxes),
         "font_size": unit.style.font_size,
         "bold": unit.style.bold,

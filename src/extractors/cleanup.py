@@ -843,8 +843,68 @@ def _clear_of(rect: BBox, blocker: BBox) -> BBox:
     return (rect[0], min(rect[3], blocker[3]), rect[2], rect[3])
 
 
+def _clear_of_x(rect: BBox, blocker: BBox) -> BBox:
+    """``rect`` cut back sideways so that it stops at the near edge of ``blocker``."""
+    if rect[0] <= blocker[0]:
+        return (rect[0], rect[1], min(rect[2], blocker[0]), rect[3])
+    return (max(rect[0], blocker[2]), rect[1], rect[2], rect[3])
+
+
 def _contains_vertically(outer: BBox, inner: BBox) -> bool:
     return outer[1] <= inner[1] and outer[3] >= inner[3]
+
+
+def _covers(outer: BBox, inner: BBox) -> bool:
+    return (
+        outer[0] <= inner[0]
+        and outer[1] <= inner[1]
+        and outer[2] >= inner[2]
+        and outer[3] >= inner[3]
+    )
+
+
+def _overlaps(a: BBox, b: BBox) -> Tuple[float, float]:
+    """``(x_overlap, y_overlap)`` of two rects; either is <= 0 when they are disjoint."""
+    return (min(a[2], b[2]) - max(a[0], b[0]), min(a[3], b[3]) - max(a[1], b[1]))
+
+
+def _redaction_rects(
+    rects: Sequence[BBox], placement: Sequence[BBox], painted: Sequence[bool]
+) -> List[BBox]:
+    """The rect each painted unit is *redacted* over: its own, minus every kept unit.
+
+    A painted unit's placement rect is also pulled off its painted neighbours, which is
+    what keeps two translations from printing on top of each other - but the source glyphs
+    under the strip that was cut away belong to nobody then, and stay on the page next to
+    the translation. Redaction therefore starts from the unit's *original* rect and only
+    gives way to units that keep their source text (a math band, a page number, a unit that
+    lost its rect to an overlap): those glyphs must survive. Two painted units may end up
+    with overlapping redaction rects, which is harmless - redaction is one pass over the
+    page before anything is written back.
+
+    A cut is refused when it would eat into the unit's own placement rect (only reachable
+    when that rect already overlapped a kept one): the unit then redacts exactly what it
+    paints, the behaviour before this split existed. Kept units are never redacted; their
+    entry is the placement rect so that a caller cannot widen it by accident.
+    """
+    red: List[BBox] = list(rects)
+    for i, _ in enumerate(red):
+        if not painted[i]:
+            red[i] = placement[i]
+            continue
+        for j, blocker in enumerate(rects):
+            if j == i or painted[j]:
+                continue
+            x_overlap, y_overlap = _overlaps(red[i], blocker)
+            narrower = min(red[i][2] - red[i][0], blocker[2] - blocker[0])
+            if x_overlap <= 0 or y_overlap <= 0 or narrower <= 0:
+                continue
+            if x_overlap < SIDE_BY_SIDE_X_RATIO * narrower:
+                cut = _clear_of_x(red[i], blocker)
+            else:
+                cut = _clear_of(red[i], blocker)
+            red[i] = cut if _covers(cut, placement[i]) else placement[i]
+    return red
 
 
 def split_overlapping_rects(
@@ -852,7 +912,7 @@ def split_overlapping_rects(
     *,
     painted: Optional[Sequence[bool]] = None,
     min_heights: Optional[Sequence[float]] = None,
-) -> Tuple[List[BBox], List[int]]:
+) -> Tuple[List[BBox], List[BBox], List[int]]:
     """§4.4 step 4: no painted rect may overlap another rect of the page.
 
     A painted rect is redacted and re-drawn, so two painted rects that share a row print
@@ -877,9 +937,14 @@ def split_overlapping_rects(
 
     A cut that would leave a rect less than its ``min_heights`` entry (one line at the
     smallest font the exporter will set for it) is not made: the *smaller* rect of the pair
-    is reported as unpaintable instead and keeps its source text. Returns the rects in
-    input order plus the sorted indexes of those unpaintable rects. Rects only ever shrink,
+    is reported as unpaintable instead and keeps its source text. Rects only ever shrink,
     so one pass over the pairs is enough: a pair made disjoint stays disjoint.
+
+    Returns ``(placement_rects, redaction_rects, unpaintable)``, all in input order. The
+    placement rect is the one a translation is written into (the rects described above);
+    the redaction rect is the one the source glyphs are removed from and gives way to kept
+    units only (:func:`_redaction_rects`). ``unpaintable`` holds the sorted indexes of the
+    rects that could not be pulled off a neighbour.
     """
     out: List[BBox] = list(rects)
     paints: List[bool] = [True] * len(out) if painted is None else list(painted)
@@ -909,11 +974,7 @@ def split_overlapping_rects(
             if x_overlap < SIDE_BY_SIDE_X_RATIO * narrower:  # beside each other: trim in x
                 if paints[i] != paints[j]:  # the kept rect keeps its full width, too
                     moving, blocker = (i, j) if paints[i] else (j, i)
-                    m, stop = out[moving], out[blocker]
-                    if m[0] <= stop[0]:
-                        out[moving] = (m[0], m[1], min(m[2], stop[0]), m[3])
-                    else:
-                        out[moving] = (max(m[0], stop[2]), m[1], m[2], m[3])
+                    out[moving] = _clear_of_x(out[moving], out[blocker])
                     continue
                 middle_x = max(a[0], b[0]) + x_overlap / 2.0
                 left, right = (i, j) if a[0] <= b[0] else (j, i)
@@ -943,7 +1004,7 @@ def split_overlapping_rects(
                 continue
             out[ti] = (top[0], top[1], top[2], middle)
             out[bi] = (bottom[0], middle, bottom[2], bottom[3])
-    return out, sorted(dropped)
+    return out, _redaction_rects(rects, out, paints), sorted(dropped)
 
 
 def _median(values: Sequence[float]) -> float:

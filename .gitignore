@@ -37,3 +37,7 @@ docs/*.pdf
 docs/test_doc_output/
 docs/test2_output/
 docs/test2_math_out/
+
+# upstream source of the curated term list: a verbatim copy of Google's Machine
+# Learning Glossary (CC BY 4.0). Only the derived JSON is tracked, with attribution.
+glossaries/Machine-Learning-Glossary.md
