@@ -487,3 +487,68 @@ iki bütçenin ayrılığı. Hypothesis round-trip özelliği `&` ve `;` ile gen
   tanınmıyor; birim `PROVIDER_EMPTY_RESPONSE` ile yeniden denenip lenient restore'a düşer.
   Bilerek: bunu hoş görmek, kaynakta literal yazılmış bir `<x id="1"/>`'i yer tutucu sanma
   riskini geri getirirdi. DeepL `ignore_tags` ile gerçek etiket döndürüyor.
+
+## 2026-09-21 — 364 sayfalık koş: "hata verdi ama aslında bitmişti"
+
+Kullanıcı web arayüzünden 364 sayfalık kitabı çevirdi. Sonuç: kırmızı hata kutusu,
+indirme yok, 571.409 karakter harcanmış. Gerçekte **kitap eksiksiz üretilmişti**.
+
+`web-jobs/4970450c1f555be0/summary.json` ölçümü:
+
+| | |
+|---|---|
+| birim | 3973 tamamlandı, **0 başarısız** |
+| sağlayıcı | deepl 2862 + google 1111 (kota dolunca yedek devreye girdi, çalıştı) |
+| çıktı | `translated_book.overlay.pdf`, 364 sayfa, 91 MB, geçerli |
+| çıkış kodu | 2 |
+
+Üç kusur aynı anda vurdu:
+
+1. **`orchestrator.py`** `could_not_fit > 0 or pages_skipped` → `EXIT_PARTIAL`.
+   Bu koşta 2890 bloktan 2'si kutusuna sığmadı, 1 sayfada metin katmanı yoktu.
+   Çıkış kodu doğru (çıktı gerçekten kusurlu), **anlamı** değil.
+2. **`web/jobs.py`** `_exit_message(2)` sabit metin döndürüyordu: "bazı birimler
+   çevrilemedi". Hiçbir birim çevrilememiş değildi. Artık mesaj `summary.counts.failed`,
+   `overlay.could_not_fit` ve `overlay.pages_skipped` sayaçlarından kuruluyor.
+3. **`web/static/index.html`** hata dalında `renderResult(job)` indirme linklerini
+   dolduruyor, hemen ardından `fail()` → `panels("error")` o paneli gizliyordu.
+   Dosya hazırdı, link hazırdı, ekranda yoktu. Artık çıktısı olan bir koş
+   "Bitti (eksiklerle)" başlığıyla sonuç panelinde kalıyor.
+
+### Asıl kayıp: sözlük hiç kullanılmadı
+
+Aynı özet `glossary_strategy: "none"`, `glossary_entries_applied: 0`,
+`glossary:0 approved terms` diyor. İş dizinindeki `glossary.json` 264 otomatik
+keşfedilmiş, hedefi boş terim içeriyor; kullanıcının 961 terimlik listesi hiç girmemiş.
+
+Neden: web formundaki açılır liste **varsayılan olarak "sözlük yok"**ta duruyordu ve
+tek seçim alıyordu — oysa sözlüklerin var olma sebebi tam da buydu.
+
+Düzeltme:
+* `pipeline/orchestrator.py` → `merge_user_glossaries(paths, destination)`. Birden çok
+  kullanıcı sözlüğünü tek dosyada birleştirir (`merge_with_precedence`, sonraki dosya
+  kazanır). Tek dosya verilirse hiçbir şey yazılmaz, yol olduğu gibi kullanılır.
+  `web` katmanı `glossary`'yi import edemez (katman sözleşmesi), `pipeline`'ı edebilir.
+* `web/app.py` → `glossary` alanı tekrarlanabilir (`Optional[List[str]]`).
+* `web/jobs.py` → `Job.glossaries: List[str]`; seçilenler `user_glossary.json` içinde
+  birleştirilip koşa verilir.
+* `index.html` → açılır liste yerine **başlangıçta hepsi işaretli** onay kutuları.
+
+Ölçüm: `computer-vision.en-tr.json` (239) tamamen `ai-ml.en-tr.json`'ın (961) alt kümesi;
+birleşim 961, hepsi `approved` ve hedefi dolu. Kayıp yok.
+
+### Doğrulama
+
+* `tests/test_web.py` — metin katmanı olmayan sayfa eklenmiş PDF ile gerçek bir
+  bozulmuş koş: çıkış 2, `pdf-overlay` çıktısı mevcut ve indirilebilir, mesaj
+  "metin katmanı yok" diyor ve "birim çevrilemedi" **demiyor**. Eski mesaj geri
+  konularak mutasyonla sınandı — test yakalıyor.
+* `tests/test_web.py` — sayfanın hata dalında `panels("result")`in `fail()`ten önce
+  geldiği yapısal olarak sabitlendi (tarayıcı yok).
+* `tests/test_glossary.py` — birleştirmenin 5 testi (boş / tek / çoklu / öncelik /
+  bozuk dosya koşuyu durdurur).
+* Tam koşu: **885 geçti, 1 atlandı**; `mypy src` temiz (66 dosya); `ruff` temiz.
+
+DeepL tarafında bu koşta harcanan 571.409 karakter geri alınamaz. Sözlüğün
+uygulanmadığı ikinci kez oldu (ilki `_glossary_entries`in identity girdilerini
+düşürmesiydi) — sözlük yolu her değişiklikten sonra küçük bir koşuyla doğrulanmalı.

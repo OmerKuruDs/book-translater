@@ -130,7 +130,7 @@ from ..glossary.manager import (
     load_user_glossary,
     merge_with_precedence,
 )
-from ..glossary.schema import load_glossary_file
+from ..glossary.schema import GlossaryFile, load_glossary_file, save_glossary_file
 from ..logging_setup import bind_job, chunk_context
 from ..translators.base import (
     BaseTranslator,
@@ -194,11 +194,39 @@ __all__ = [
     "default_formats",
     "describe_provider_units",
     "exit_code_for",
+    "merge_user_glossaries",
     "normalise_formats",
     "outcome_name",
     "summary_to_jsonable",
     "worst_exit",
 ]
+
+
+def merge_user_glossaries(
+    paths: Sequence[Path], destination: Path
+) -> Result[Optional[Path]]:
+    """Fold several user glossaries into one file the stages can load.
+
+    A stage takes a single ``--glossary`` file, but one book usually needs more
+    than one vocabulary - a computer-vision list *and* a machine-learning list.
+    Later files win on an identical source, the same precedence the glossary
+    stage already applies to a user file over a discovered term.
+    """
+    ordered = [Path(path) for path in paths]
+    if not ordered:
+        return Ok(None)
+    if len(ordered) == 1:
+        return Ok(ordered[0])
+    entries: List[GlossaryEntry] = []
+    for path in ordered:
+        loaded = load_user_glossary(path)
+        if isinstance(loaded, Err):
+            return loaded
+        entries = merge_with_precedence(entries, loaded.value)
+    saved = save_glossary_file(destination, GlossaryFile.from_entries(entries))
+    if isinstance(saved, Err):
+        return saved
+    return Ok(destination)
 
 log = logging.getLogger("book_translator.pipeline.orchestrator")
 

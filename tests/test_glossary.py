@@ -29,6 +29,7 @@ from book_translator.glossary.schema import (
     save_glossary_file,
 )
 from book_translator.pipeline.glossary_check import check_chunk, target_stem, turkish_casefold
+from book_translator.pipeline.orchestrator import merge_user_glossaries
 
 # ---------------------------------------------------------------------------
 # helpers
@@ -493,3 +494,74 @@ def test_discovery_skips_legend_blocks_and_image_lines() -> None:
     assert "Gamma Delta" not in entries and "Node" not in entries
     assert entries["Gamma"] >= 3 and entries["Alpha"] >= 3
     assert entries.get("Zeta") == 3  # the orphan-marker line (3 more) is excluded
+
+
+# --------------------------------------------------------------------------- #
+# several user glossaries in one run (merge_user_glossaries)
+# --------------------------------------------------------------------------- #
+
+
+def _user_glossary(path: Path, pairs: Dict[str, str]) -> Path:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps(
+            {
+                "version": GLOSSARY_FILE_VERSION,
+                "source_lang": "en",
+                "target_lang": "tr",
+                "entries": [{"source": s, "target": t} for s, t in pairs.items()],
+            }
+        ),
+        encoding="utf-8",
+    )
+    return path
+
+
+def test_no_glossary_chosen_means_no_file(tmp_path: Path) -> None:
+    assert unwrap(merge_user_glossaries([], tmp_path / "merged.json")) is None
+
+
+def test_one_glossary_is_used_as_it_is(tmp_path: Path) -> None:
+    """Nothing is rewritten for a single file: the run reads the user's own path."""
+    only = _user_glossary(tmp_path / "cv.json", {"object detection": "object detection"})
+    merged = unwrap(merge_user_glossaries([only], tmp_path / "merged.json"))
+    assert merged == only
+    assert not (tmp_path / "merged.json").exists()
+
+
+def test_several_glossaries_are_merged_into_one_usable_file(tmp_path: Path) -> None:
+    """The reason this exists: a book needs its computer-vision *and* its ML terms.
+    Picking one used to drop the other silently, and a whole book was translated
+    without the vocabulary it was supposed to keep."""
+    cv = _user_glossary(tmp_path / "cv.json", {"computer vision": "computer vision"})
+    ml = _user_glossary(tmp_path / "ml.json", {"zero-shot": "zero-shot", "epoch": "epok"})
+
+    merged = unwrap(merge_user_glossaries([cv, ml], tmp_path / "merged.json"))
+    assert merged == tmp_path / "merged.json"
+
+    entries = unwrap(load_user_glossary(merged))
+    assert {e.source: e.target for e in entries} == {
+        "computer vision": "computer vision",
+        "zero-shot": "zero-shot",
+        "epoch": "epok",
+    }
+    # A user file is approved by default, so every merged term reaches the provider.
+    assert all(e.status is GlossaryStatus.APPROVED for e in entries)
+    assert len(effective_glossary(entries).entries) == 3
+
+
+def test_a_later_glossary_wins_on_the_same_term(tmp_path: Path) -> None:
+    first = _user_glossary(tmp_path / "a.json", {"model": "model"})
+    second = _user_glossary(tmp_path / "b.json", {"model": "modelleme"})
+    merged = unwrap(merge_user_glossaries([first, second], tmp_path / "merged.json"))
+    entries = unwrap(load_user_glossary(merged))
+    assert {e.source: e.target for e in entries} == {"model": "modelleme"}
+
+
+def test_a_broken_glossary_stops_the_merge_instead_of_dropping_terms(tmp_path: Path) -> None:
+    good = _user_glossary(tmp_path / "good.json", {"tensor": "tensör"})
+    bad = tmp_path / "bad.json"
+    bad.write_text("{not json", encoding="utf-8")
+    result = merge_user_glossaries([good, bad], tmp_path / "merged.json")
+    assert isinstance(result, Err)
+    assert not (tmp_path / "merged.json").exists()

@@ -47,7 +47,6 @@ UPLOAD_CHUNK = 1024 * 1024
 PDF_MAGIC = b"%PDF-"
 MODES = (MODE_OVERLAY, MODE_REFLOW)
 
-NO_GLOSSARY = ""
 """Value the form sends for "sözlük yok"."""
 
 _UNSAFE_NAME = str.maketrans({c: "_" for c in '\\/:*?"<>|\r\n\t'})
@@ -56,7 +55,9 @@ _UNSAFE_NAME = str.maketrans({c: "_" for c in '\\/:*?"<>|\r\n\t'})
 # same way); calling them inline in a signature is what ruff's B008 objects to.
 FILE_FIELD = File(...)
 MODE_FIELD = Form(MODE_OVERLAY)
-GLOSSARY_FIELD = Form(NO_GLOSSARY)
+#: Repeated, one value per chosen glossary: a book usually needs more than one
+#: vocabulary, and picking only one silently drops the rest of the terms.
+GLOSSARY_FIELD = Form(None)
 ESTIMATE_FIELD = Form(True)
 
 
@@ -156,7 +157,7 @@ def create_app(
     async def create_job(
         file: UploadFile = FILE_FIELD,
         mode: str = MODE_FIELD,
-        glossary: str = GLOSSARY_FIELD,
+        glossary: Optional[List[str]] = GLOSSARY_FIELD,
         estimate: bool = ESTIMATE_FIELD,
     ) -> Response:
         if mode not in MODES:
@@ -168,15 +169,16 @@ def create_app(
                 "Yalnızca PDF dosyası yüklenebilir.",
                 "Uzantısı .pdf olan bir dosya seçin.",
             )
-        selected: Optional[str] = glossary.strip() or None
-        if selected is not None and manager.glossary_path(selected) is None:
-            return _json_error(
-                400,
-                f"Sözlük bulunamadı: {safe_filename(selected)}",
-                f"Sözlükler {manager.glossary_dir} altındaki .json dosyalarından seçilir.",
-            )
+        selected: List[str] = [value.strip() for value in (glossary or []) if value.strip()]
+        for chosen in selected:
+            if manager.glossary_path(chosen) is None:
+                return _json_error(
+                    400,
+                    f"Sözlük bulunamadı: {safe_filename(chosen)}",
+                    f"Sözlükler {manager.glossary_dir} altındaki .json dosyalarından seçilir.",
+                )
 
-        job = manager.create(filename=name, mode=mode, glossary=selected)
+        job = manager.create(filename=name, mode=mode, glossaries=selected)
         stored = await _store_upload(file, job, limit)
         if stored is not None:
             manager.discard(job)

@@ -171,14 +171,16 @@ Each job gets its own directory under the work root (`./web-jobs/<job id>/`, ove
 `--work-root` or `BOOK_TRANSLATOR_WEB_WORKDIR`); it is an ordinary output directory, so
 `book-translator status -o web-jobs/<job id>` and every CLI stage work on it afterwards. The
 uploaded file is always stored as `input.pdf` inside that directory — the name the browser
-sends is only ever displayed. The glossary dropdown lists the `*.json` files of
-`./glossaries` (`--glossaries` / `BOOK_TRANSLATOR_WEB_GLOSSARIES`), plus "sözlük yok".
+sends is only ever displayed. The glossary box lists the `*.json` files of `./glossaries`
+(`--glossaries` / `BOOK_TRANSLATOR_WEB_GLOSSARIES`) as checkboxes, **all ticked**: a book
+usually needs more than one vocabulary, and the chosen files are merged before the run
+(later file wins on an identical term). Untick what you do not want.
 
 | Method | Path | |
 |---|---|---|
 | `GET` | `/` | the page (single file, no CDN, works offline) |
 | `GET` | `/api/config` | glossary list, modes, upload limit |
-| `POST` | `/api/jobs` | multipart `file`, `mode`, `glossary`, `estimate` → job |
+| `POST` | `/api/jobs` | multipart `file`, `mode`, `glossary` (repeated, one per file), `estimate` → job |
 | `POST` | `/api/jobs/{id}/start` | confirm the estimate (or resume) and translate |
 | `GET` | `/api/jobs/{id}` | phase, stage, unit progress, characters, result/error |
 | `GET` | `/api/jobs/{id}/download/{key}` | one produced output (`markdown`, `epub`, `pdf-overlay`, …) |

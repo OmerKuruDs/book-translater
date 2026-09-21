@@ -81,6 +81,7 @@
   dl.facts { display: grid; grid-template-columns: auto 1fr; gap: 4px 16px; margin: 0; }
   dl.facts dt { color: var(--muted); font-size: 14px; }
   dl.facts dd { margin: 0; font-variant-numeric: tabular-nums; }
+  label.check { display: block; margin: 4px 0; font-size: 15px; }
   .downloads { list-style: none; padding: 0; margin: 12px 0 0; }
   .downloads li { margin: 6px 0; }
   .downloads a { color: var(--accent); }
@@ -88,6 +89,7 @@
   .box-err { border-color: var(--err); background: var(--err-soft); }
   .box-err h2 { color: var(--err); }
   .box-err .msg { font-weight: 600; }
+  #result-note { color: var(--warn); font-weight: 600; margin: 0 0 12px; }
   .box-err .hint { margin-top: 8px; color: var(--ink); }
   .box-err .code { margin-top: 8px; font-size: 13px; color: var(--muted);
                    font-family: ui-monospace, Consolas, monospace; }
@@ -126,8 +128,8 @@
 
     <fieldset>
       <legend>3 &middot; Sözlük</legend>
-      <select id="glossary"><option value="">sözlük yok</option></select>
-      <p class="note">Sözlükteki onaylı terimler çeviride korunur.</p>
+      <div id="glossary-list"></div>
+      <p class="note">Sözlükteki onaylı terimler çeviride korunur. Bulunan sözlükler başlangıçta seçilidir; işaretini kaldırdığınız sözlük kullanılmaz.</p>
     </fieldset>
 
     <fieldset>
@@ -166,7 +168,8 @@
   </section>
 
   <section id="result-panel" class="hidden">
-    <h2>Bitti</h2>
+    <h2 id="result-title">Bitti</h2>
+    <p class="msg hidden" id="result-note"></p>
     <dl class="facts">
       <dt>Bu çalıştırmada gönderilen</dt><dd><span id="chars-run">0</span> karakter</dd>
       <dt>Bu iş için toplam</dt><dd><span id="chars-total">0</span> karakter</dd>
@@ -243,12 +246,23 @@
 
   fetch("/api/config").then(function (r) { return r.json(); }).then(function (cfg) {
     el("max-mb").textContent = cfg.max_upload_mb;
-    var select = el("glossary");
-    (cfg.glossaries || []).forEach(function (name) {
-      var option = document.createElement("option");
-      option.value = name;
-      option.textContent = name;
-      select.appendChild(option);
+    var list = el("glossary-list");
+    var names = cfg.glossaries || [];
+    if (names.length === 0) {
+      list.textContent = "Bu dizinde sözlük yok.";
+      list.className = "note";
+    }
+    names.forEach(function (name) {
+      var label = document.createElement("label");
+      label.className = "check";
+      var box = document.createElement("input");
+      box.type = "checkbox";
+      box.className = "glossary-pick";
+      box.value = name;
+      box.checked = true;
+      label.appendChild(box);
+      label.appendChild(document.createTextNode(" " + name));
+      list.appendChild(label);
     });
   }).catch(function () {
     el("form-note").textContent = "Sunucu ayarları okunamadı.";
@@ -286,7 +300,10 @@
     var data = new FormData();
     data.append("file", state.file, state.file.name);
     data.append("mode", document.querySelector('input[name="mode"]:checked').value);
-    data.append("glossary", el("glossary").value);
+    Array.prototype.forEach.call(
+      document.querySelectorAll(".glossary-pick:checked"),
+      function (box) { data.append("glossary", box.value); }
+    );
     data.append("estimate", el("estimate").checked ? "true" : "false");
     el("go").disabled = true;
     panels("progress");
@@ -361,6 +378,8 @@
 
   function renderResult(job) {
     var r = job.result || {};
+    el("result-title").textContent = "Bitti";
+    show(el("result-note"), false);
     el("chars-run").textContent = r.chars_sent_this_run || 0;
     el("chars-total").textContent = r.chars_sent_total || 0;
     el("exit-code").textContent = r.exit_code;
@@ -408,8 +427,17 @@
       return;
     }
     if (job.phase === "error") {
-      if (job.result) { renderResult(job); }
       var e = job.error || {};
+      var produced = job.result && (job.result.outputs || []).length > 0;
+      if (produced) {
+        renderResult(job);
+        el("result-title").textContent = "Bitti (eksiklerle)";
+        var note = el("result-note");
+        note.textContent = e.message || "";
+        show(note, true);
+        panels("result");
+        return;
+      }
       fail(e.message, e.hint, e.code ? (e.code + " · çıkış kodu " + e.exit_code) : "");
       return;
     }

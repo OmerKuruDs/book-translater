@@ -12,7 +12,7 @@ import json
 import os
 import time
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Sequence
 
 import pymupdf
 import pytest
@@ -77,13 +77,18 @@ def upload(
     *,
     name: str = "book.pdf",
     mode: str = "reflow",
-    glossary: str = "",
+    glossary: Sequence[str] = (),
     estimate: bool = False,
 ) -> Any:
     return client.post(
         "/api/jobs",
         files={"file": (name, pdf.read_bytes(), "application/pdf")},
-        data={"mode": mode, "glossary": glossary, "estimate": "true" if estimate else "false"},
+        # ``glossary`` repeats once per chosen file, the shape the form sends.
+        data={
+            "mode": mode,
+            "glossary": list(glossary),
+            "estimate": "true" if estimate else "false",
+        },
     )
 
 
@@ -388,12 +393,14 @@ def test_glossaries_are_listed_and_only_a_listed_one_is_accepted(
     assert config["glossaries"] == ["terms.en-tr.json"]
     assert config["modes"] == ["overlay", "reflow"]
 
-    accepted = upload(client, overlay_pdfs["overlay_styles"], glossary="terms.en-tr.json")
+    accepted = upload(
+        client, overlay_pdfs["overlay_styles"], glossary=["terms.en-tr.json"]
+    )
     assert accepted.status_code == 201
-    assert accepted.json()["glossary"] == "terms.en-tr.json"
+    assert accepted.json()["glossaries"] == ["terms.en-tr.json"]
 
     for bad in ("missing.json", "../../secret.json", "notes.md"):
-        refused = upload(client, overlay_pdfs["overlay_styles"], glossary=bad)
+        refused = upload(client, overlay_pdfs["overlay_styles"], glossary=[bad])
         assert refused.status_code == 400, bad
         assert "Sözlük" in refused.json()["error"]["message"]
 
@@ -496,3 +503,50 @@ def test_a_crash_inside_the_job_is_reported_without_internals(
     assert job["error"]["code"] == ErrorCode.INTERNAL.value
     assert API_KEY not in created.text
     assert "RuntimeError" in job["error"]["message"]
+
+
+def test_a_run_degraded_by_layout_still_hands_over_the_book(
+    tmp_path: Path, ten_unit_pdf: Path
+) -> None:
+    """A finished translation must never be withheld because the output is imperfect.
+
+    A 364-page book came out whole, but one page had no text layer and two blocks
+    would not fit their box. That is exit 2, which the UI read as "some units could
+    not be translated" and hid the download behind an error box - so the user saw a
+    failure, no file, and a spent quota. The run's own counters say what happened.
+    """
+    with_blank = tmp_path / "with_blank.pdf"
+    doc = pymupdf.open(ten_unit_pdf)
+    doc.new_page()  # a page with no text layer at all
+    doc.save(with_blank)
+    doc.close()
+
+    client = make_client(tmp_path)
+    job = upload(client, with_blank, mode="overlay").json()
+
+    assert job["phase"] == "error"  # degraded, and the UI says so
+    assert job["error"]["exit_code"] == 2
+    outputs = {o["key"]: o for o in job["result"]["outputs"]}
+    assert "pdf-overlay" in outputs, job          # the book is there ...
+    assert outputs["pdf-overlay"]["size_bytes"] > 0  # ... and downloadable
+
+    message = job["error"]["message"]
+    assert "metin katmanı yok" in message, message
+    assert "birim çevrilemedi" not in message, message  # nothing failed to translate
+    assert job["failed"] == 0
+
+
+def test_the_page_offers_the_files_of_a_degraded_run_instead_of_hiding_them(
+    tmp_path: Path,
+) -> None:
+    """The server sent the downloads; the page threw them away.
+
+    ``renderResult`` filled the download list and the next line switched to the
+    error panel, which hides it - so a finished 364-page book looked like a
+    failure with nothing to fetch. There is no browser here, so this pins the
+    shape of that branch: on an error *with* outputs the result panel wins.
+    """
+    page = make_client(tmp_path).get("/").text
+    branch = page.split('if (job.phase === "error")', 1)[1].split("renderProgress", 1)[0]
+    assert "outputs" in branch, branch  # it looks at what was produced
+    assert branch.index('panels("result")') < branch.index("fail("), branch

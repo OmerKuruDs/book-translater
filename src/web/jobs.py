@@ -50,6 +50,7 @@ from ..pipeline.orchestrator import (
     ProgressEvent,
     TranslatorFactory,
     exit_code_for,
+    merge_user_glossaries,
 )
 
 log = logging.getLogger(f"{__name__}")
@@ -60,6 +61,9 @@ name never reaches the file system (path traversal)."""
 
 STAGE_EXTRACT = "extract"
 STAGE_GLOSSARY = "glossary"
+
+#: Where several chosen glossaries are folded into the single file a run takes.
+MERGED_GLOSSARY_NAME = "user_glossary.json"
 STAGE_TRANSLATE = "translate"
 STAGE_EXPORT = "export"
 
@@ -246,7 +250,7 @@ class Job:
     directory: Path
     filename: str
     mode: str
-    glossary: Optional[str]
+    glossaries: List[str]
     created_at: float = field(default_factory=time.time)
     phase: str = PHASE_NEW
     progress: JobProgress = field(default_factory=JobProgress)
@@ -323,7 +327,7 @@ class JobManager:
 
     # -- job lifecycle ----------------------------------------------------- #
 
-    def create(self, *, filename: str, mode: str, glossary: Optional[str]) -> Job:
+    def create(self, *, filename: str, mode: str, glossaries: Sequence[str]) -> Job:
         job_id = secrets.token_hex(8)
         directory = self.work_root / job_id
         directory.mkdir(parents=True, exist_ok=True)
@@ -332,7 +336,7 @@ class JobManager:
             directory=directory,
             filename=filename,
             mode=mode,
-            glossary=glossary,
+            glossaries=list(glossaries),
         )
         with self._lock:
             self._jobs[job_id] = job
@@ -370,7 +374,7 @@ class JobManager:
                 "id": job.id,
                 "filename": job.filename,
                 "mode": job.mode,
-                "glossary": job.glossary,
+                "glossaries": list(job.glossaries),
                 "phase": job.phase,
                 "phase_label": PHASE_LABELS.get(job.phase, job.phase),
                 "stage": progress.stage,
@@ -524,20 +528,26 @@ class JobManager:
                 progress=lambda event: self._on_progress(job, event),
                 on_stage=lambda stage: self._on_stage(job, stage),
             )
-            glossary_path = (
-                self.glossary_path(job.glossary) if job.glossary is not None else None
-            )
-            if job.glossary is not None and glossary_path is None:
-                self._fail(
-                    job,
-                    AppError(
-                        ErrorCode.GLOSSARY_INVALID,
-                        f"unknown glossary {job.glossary!r}",
-                        ErrorScope.USER,
-                    ),
-                    redaction,
-                )
+            chosen: List[Path] = []
+            for name in job.glossaries:
+                resolved = self.glossary_path(name)
+                if resolved is None:
+                    self._fail(
+                        job,
+                        AppError(
+                            ErrorCode.GLOSSARY_INVALID,
+                            f"unknown glossary {name!r}",
+                            ErrorScope.USER,
+                        ),
+                        redaction,
+                    )
+                    return
+                chosen.append(resolved)
+            merged = merge_user_glossaries(chosen, job.directory / MERGED_GLOSSARY_NAME)
+            if isinstance(merged, Err):
+                self._fail(job, merged.error, redaction)
                 return
+            glossary_path = merged.value
             result = asyncio.run(
                 orchestrator.run(
                     job.input_path,
@@ -633,7 +643,7 @@ class JobManager:
             if summary.exit_code != EXIT_SUCCESS and job.failure is None:
                 job.failure = JobFailure(
                     code=f"exit_{summary.exit_code}",
-                    message=_exit_message(summary.exit_code),
+                    message=_exit_message(summary),
                     exit_code=summary.exit_code,
                     hint="Ayrıntılar uyarı listesinde.",
                 )
@@ -647,9 +657,37 @@ def _parse_estimate(warnings: Sequence[str]) -> Optional[JobEstimate]:
     return None
 
 
-def _exit_message(exit_code: int) -> str:
+def _degradations(summary: JobSummary) -> List[str]:
+    """The concrete ways this run fell short, in the run's own numbers."""
+    parts: List[str] = []
+    if summary.counts.failed > 0:
+        parts.append(f"{summary.counts.failed} birim çevrilemedi")
+    overlay = summary.overlay
+    if overlay is not None:
+        if overlay.could_not_fit > 0:
+            parts.append(
+                f"{overlay.could_not_fit} metin bloğu kısaltılsa da kutusuna sığmadı"
+            )
+        if overlay.pages_skipped > 0:
+            parts.append(
+                f"{overlay.pages_skipped} sayfada metin katmanı yok (taranmış görüntü)"
+            )
+    return parts
+
+
+def _exit_message(summary: JobSummary) -> str:
+    """Exit 2 means the output is degraded - but not how.
+
+    Untranslated units, blocks too long for their box and pages with no text
+    layer all land on the same code. Naming the wrong one sent the reader
+    looking for a translation failure that had not happened, while the finished
+    book sat undownloaded, so the message is built from the counters instead.
+    """
+    if summary.exit_code == 2:
+        parts = _degradations(summary)
+        detail = "; ".join(parts) if parts else "çıktı tam değil"
+        return f"Çeviri bitti, {detail}. Üretilen dosyalar aşağıda."
     return {
-        2: "Çıktı eksik: bazı birimler çevrilemedi, yazılabilen dosyalar aşağıda.",
         3: (
             "İş duraklatıldı (kota, kimlik doğrulama ya da sağlayıcının hız sınırı). "
             "Durum korundu; aynı çıktı dizinini yeniden çalıştırınca kaldığı yerden devam eder."
@@ -657,7 +695,7 @@ def _exit_message(exit_code: int) -> str:
         4: "Çıktı dizini başka bir işlem tarafından kilitli.",
         5: "Kayıtlı durum ile bu çalıştırma uyuşmuyor.",
         130: "İş yarıda kesildi; kayıtlı durum bozulmadı.",
-    }.get(exit_code, "İş başarısız oldu.")
+    }.get(summary.exit_code, "İş başarısız oldu.")
 
 
 __all__ = [
