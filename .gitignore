@@ -34,9 +34,8 @@ summary.json
 # test fixtures and generated output: excerpts of a copyrighted book and their
 # translations. Not redistributed - supply your own PDFs (see README, "Test fixtures").
 docs/*.pdf
-docs/test_doc_output/
-docs/test2_output/
-docs/test2_math_out/
+docs/*/
+!docs/*.md
 
 # upstream source of the curated term list: a verbatim copy of Google's Machine
 # Learning Glossary (CC BY 4.0). Only the derived JSON is tracked, with attribution.

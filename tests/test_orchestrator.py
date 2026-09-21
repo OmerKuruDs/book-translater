@@ -1924,6 +1924,25 @@ async def test_status_reports_the_overlay_pass_and_review_counts(tmp_path: Path)
     }
     assert report.counts is not None and report.counts.total == 0  # no reflow pass
 
+    # BUG-02: several reason names are also count keys. The by-reason tally must fill in
+    # the reasons the counts block lacks, never add on top of the ones it already has -
+    # status used to report shrunk_below_threshold / could_not_fit / kept_original twice.
+    (ws.output / "overlay_review.json").write_text(
+        json.dumps({"version": 1,
+                    "counts": {"placed": 20, "shrunk_below_threshold": 2,
+                               "could_not_fit": 1, "kept_original": 4},
+                    "entries": [{"reason": "shrunk_below_threshold"},
+                                {"reason": "shrunk_below_threshold"},
+                                {"reason": "could_not_fit"},
+                                {"reason": "fragment"}]}),
+        encoding="utf-8",
+    )
+    counts = unwrap(orch.status()).overlay["review_counts"]
+    assert counts["shrunk_below_threshold"] == 2 and counts["could_not_fit"] == 1
+    assert counts["kept_original"] == 4  # no entry carries it; the counts block still wins
+    assert counts["fragment"] == 1  # only the tally knows this reason
+    assert counts["entries"] == 4
+
 
 def test_fresh_archives_the_overlay_artifacts(tmp_path: Path) -> None:
     """§5.8: --fresh moves the overlay PDF, the review list and the source profile too."""

@@ -3811,10 +3811,17 @@ class Orchestrator:
         entries = payload.get("entries") if isinstance(payload, dict) else None
         if isinstance(entries, list):
             counts.setdefault("entries", len(entries))
+            # The by-reason tally only *fills in* reasons the file's own counts block does
+            # not already carry. Several reason names are also count keys
+            # (``shrunk_below_threshold``, ``could_not_fit``, ``kept_original``); adding the
+            # tally on top of them reported every one of those twice.
+            tally: Dict[str, int] = {}
             for entry in entries:
                 reason = entry.get("reason") if isinstance(entry, dict) else None
                 if isinstance(reason, str):
-                    counts[reason] = counts.get(reason, 0) + 1
+                    tally[reason] = tally.get(reason, 0) + 1
+            for reason, total in tally.items():
+                counts.setdefault(reason, total)
         return counts
 
     def _overlay_status(

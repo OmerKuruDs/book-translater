@@ -544,3 +544,81 @@ def test_21_migrating_a_v3_file_matches_a_fresh_one(tmp_path: Path) -> None:
     assert _table_info(fresh_path, "overlay_blocks") == _table_info(
         migrated_path, "overlay_blocks"
     )
+
+
+def _strip_column(ddl: str, column: str) -> str:
+    """``ddl`` without the line that declares ``column``.
+
+    No regex: SQLAlchemy emits one column per line, so dropping the line is enough."""
+    kept = [ln for ln in ddl.splitlines() if not ln.strip().startswith(column)]
+    joined = chr(10).join(kept)
+    return joined.replace("," + chr(10) + ")", chr(10) + ")")
+
+
+def test_22_v2_migration_copies_rows_without_inventing_values(tmp_path: Path) -> None:
+    """BUG-01: the v2 -> v3 rebuild must copy only columns the old table really has.
+
+    ``_upgrade_v2_to_v3`` recreates ``overlay_blocks`` from today's metadata, which by now
+    carries ``redact_bbox`` (added in v4). Naming that column in the copying INSERT does
+    not raise: SQLite reads an unknown double-quoted identifier as a *string literal*, so
+    every row silently received the text ``redact_bbox``, and the file only broke later,
+    when the exporter tried to read a bbox out of it. ``test_20`` could not see this - it
+    built its "v2" table from the current DDL (so the column was already there) and
+    migrated an empty table (so the copying INSERT never ran on a row)."""
+    path = tmp_path / "translation_state.db"
+    close_database(unwrap(open_database(path, tool_version=TOOL_VERSION)))
+
+    with sqlite3.connect(path) as raw:
+        ddl = raw.execute(
+            "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'overlay_blocks'"
+        ).fetchone()[0]
+        old_ddl = _strip_column(ddl, "redact_bbox")
+        assert "redact_bbox" not in old_ddl, "update this test: the v4 column is still there"
+        raw.execute("PRAGMA foreign_keys=OFF")
+        raw.execute("DROP TABLE overlay_blocks")
+        raw.execute(old_ddl)
+        raw.execute("UPDATE schema_meta SET schema_version = 2 WHERE id = 1")
+        raw.execute(
+            "INSERT INTO jobs (id, singleton, input_path, input_sha256, status,"
+            " tool_version, warnings, created_at, updated_at) VALUES (?, 1, 'in.pdf', ?,"
+            " 'TRANSLATING', '0.1.0-v2', '[]', ?, ?)", (JOB_ID, "a" * 64, TS, TS))
+        raw.execute(
+            "INSERT INTO overlay_pages (job_id, page, width, height, rotation,"
+            " has_text_layer, block_count, translatable_count, body_size, created_at)"
+            " VALUES (?, 1, 595.0, 842.0, 0, 1, 3, 3, 10.0, ?)", (JOB_ID, TS))
+        for index in (1, 2, 3):  # rows, so the copying INSERT runs on something
+            raw.execute(
+                "INSERT INTO overlay_blocks (job_id, page, index_on_page, kind, translate,"
+                " x0, y0, x1, y1, font_size, family, color, alignment, source_text,"
+                " translated_text, content_hash, char_count, status, created_at,"
+                " updated_at) VALUES (?, 1, ?, 'body', 1, 0, 0, 10, 10, 10.0, 'serif',"
+                " '#000000', 'left', ?, ?, ?, 5, 'COMPLETED', ?, ?)",
+                (JOB_ID, index, "source " + str(index), "ceviri " + str(index),
+                 str(index).zfill(64), TS, TS))
+        raw.commit()
+
+    close_database(unwrap(open_database(path, tool_version=TOOL_VERSION)))
+
+    assert schema_version_of(path) == m.CURRENT_SCHEMA_VERSION
+    with sqlite3.connect(path) as raw:
+        rows = raw.execute(
+            "SELECT source_text, translated_text, redact_bbox FROM overlay_blocks"
+            " ORDER BY id").fetchall()
+    assert [r[0] for r in rows] == ["source 1", "source 2", "source 3"]
+    assert [r[1] for r in rows] == ["ceviri 1", "ceviri 2", "ceviri 3"]
+    # the column the old table never had: NULL, not the text "redact_bbox"
+    assert [r[2] for r in rows] == [None, None, None]
+
+
+def test_22b_a_rebuilt_table_never_selects_a_column_the_source_lacks(tmp_path: Path) -> None:
+    """The SQLite behaviour behind BUG-01, pinned.
+
+    If this ever stops holding - SQLite growing strict double-quote handling - the guard in
+    ``_upgrade_v2_to_v3`` becomes unnecessary rather than wrong, and this test says so."""
+    path = tmp_path / "quoting.db"
+    with sqlite3.connect(path) as raw:
+        raw.execute("CREATE TABLE old (a TEXT, b TEXT)")
+        raw.execute("INSERT INTO old VALUES ('x', 'y')")
+        raw.execute("CREATE TABLE new (a TEXT, b TEXT, c TEXT)")
+        raw.execute('INSERT INTO new ("a","b","c") SELECT "a","b","c" FROM old')
+        assert raw.execute("SELECT a, b, c FROM new").fetchall() == [("x", "y", "c")]

@@ -111,7 +111,7 @@ book-translator status    -o out [--json]
 
 ```
 out/
-├── translation_state.db      state (SQLite, schema v2): job, chunks, overlay units, runs, lease
+├── translation_state.db      state (SQLite, schema v4): job, chunks, overlay units, runs, lease
 ├── source_book.md            extracted BT-Markdown (may be edited before `translate`)
 ├── source_profile.json       page size / body font / margins measured from the input
 ├── figures.json              figure inventory (page, region, DPI, labels + label boxes)
@@ -214,7 +214,10 @@ directory. Tests that need them look for:
 | `docs/test_doc.pdf` | a 3-page excerpt (prose + one vector figure with labels) |
 | `docs/test-2.pdf` | a 48-page excerpt with display mathematics |
 
-Supply your own PDFs at those paths to run the full suite. Everything else runs without them:
+Supply your own PDFs at those paths to run the full suite. **Without them the suite does not
+pass**: around 60 tests fail and 15 error out rather than skipping, and they include the
+regression net for figure detection, display-mathematics bands and the redaction rect.
+Type and lint checks are unaffected:
 
 ```
 python -m pytest -q          # the suite

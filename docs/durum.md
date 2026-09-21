@@ -1,6 +1,6 @@
 # Proje Durumu — book-translator
 
-Son güncelleme: 2026-09-21 (3. tur inceleme + düzeltme turu ✅ 722 test, canlı doğrulandı; **QA onay bekliyor**)
+Son güncelleme: 2026-09-21 (8 adımlı akış tamamlandı: QA **CONDITIONAL GO**; P0 göç hatası düzeltildi, 752 test)
 
 ## Ne yapıyoruz
 İngilizce PDF kitabı Türkçeye çeviren Python CLI (`book-translator`). Spec: kullanıcıdan gelen 4 aşamalı pipeline (ingestion → glossary → translation → export). Zorunlu 8 adımlı iş akışı ile ilerleniyor; her adım kullanıcı onayıyla ("devam") geçiliyor.
@@ -109,7 +109,7 @@ Reflow exit 0 (10/10 chunk, 8991 kr) · overlay exit 0 (43/43 birim, 3/3 sayfa) 
 - Repository kullanımı: `open_database(path, tool_version=...)` → `JobRepository(db)`, `LeaseRepository(db)`, `ChunkRepository(db, run_id=..., glossary_hash=...)`. Tüm datetime timezone-aware; sadece `session.utcnow()`.
 - `reschedule`/`fail`/`complete` → `Result[bool]`; `iter_ordered` düz iterator (hata fırlatabilir).
 - Windows `datetime.now()` ~15 ms çözünürlük; orchestrator zamanı kesin artan saymamalı.
-- Proje klasörü kendi git deposu değil (ev dizini depo görünüyor). `git init` kararı kullanıcıda.
+- Proje kendi git deposu (`main`, GitHub: OmerKuruDs/book-translater). Ev dizini de ayrı bir depo görünüyor ve commit'i yok — proje dizininden `git add` yaparken iç depoda olduğundan emin ol.
 - Editördeki Pyright "sqlalchemy bulunamadı" uyarıları `.venv` seçilmediğinden; gerçek hata değil.
 
 ---

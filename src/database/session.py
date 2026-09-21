@@ -28,6 +28,7 @@ Migration rules (section 7)
 
 from __future__ import annotations
 
+import logging
 import sqlite3
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -54,6 +55,8 @@ SQLITE_MIN_VERSION = (3, 8, 0)
 #: alone - a version listed here must therefore survive every *aggregate* query, not a
 #: whole-row load (a v3 file has no ``redact_bbox`` column).
 READ_ONLY_ACCEPTED_VERSIONS: Tuple[int, ...] = (1, 2, 3)
+
+log = logging.getLogger("book_translator.database")
 
 TXN_MODE_OPTION = "sqlite_txn_mode"
 TXN_IMMEDIATE = "IMMEDIATE"
@@ -295,13 +298,23 @@ def _upgrade_v2_to_v3(conn: Connection, ctx: MigrationContext) -> None:
     temporary name from the current metadata, copy every row of the shared columns, drop the
     old table and rename. Indexes are recreated from the metadata afterwards. Rows are
     preserved; no value is rewritten.
+
+    The copied column list is the *intersection* of the old table and today's metadata, and
+    it is read from the renamed table rather than assumed. A later migration may have added
+    a column (v4 added ``redact_bbox``), and naming one the old table does not have would
+    not raise here: SQLite reads an unknown double-quoted identifier as a string literal, so
+    ``SELECT "redact_bbox"`` would quietly write the text ``redact_bbox`` into every row.
+    Columns added after v3 are nullable, so leaving them out of the copy is correct - the
+    migration that introduces them fills them in.
     """
     dialect = conn.dialect
     table = m.Base.metadata.tables["overlay_blocks"]
     if "keep_reason" not in _existing_columns(conn, "overlay_blocks"):
         return  # a v2 file that never held the overlay tables: nothing to widen
-    columns = ", ".join(f'"{c.name}"' for c in table.columns)
     conn.exec_driver_sql("ALTER TABLE overlay_blocks RENAME TO overlay_blocks_v2")
+    existing = _existing_columns(conn, "overlay_blocks_v2")
+    shared = [c.name for c in table.columns if c.name in existing]
+    columns = ", ".join(f'"{name}"' for name in shared)
     conn.exec_driver_sql(str(CreateTable(table).compile(dialect=dialect)))
     conn.exec_driver_sql(
         f"INSERT INTO overlay_blocks ({columns}) SELECT {columns} FROM overlay_blocks_v2"
@@ -353,6 +366,12 @@ def _run_migrations(
         conn = conn.execution_options(**{TXN_MODE_OPTION: TXN_IMMEDIATE})
         with conn.begin():
             for version in range(from_version, to_version):
+                # BUG-04: a schema upgrade used to leave no trace but the archive folder
+                log.info(
+                    "state schema upgrade %d -> %d", version, version + 1,
+                    extra={"event": "schema_migrated", "from_version": version,
+                           "to_version": version + 1},
+                )
                 MIGRATIONS[version](conn, ctx)
             if from_version >= 1:
                 conn.execute(
