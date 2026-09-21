@@ -12,7 +12,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import timedelta
 from pathlib import Path
-from typing import Any, Dict, Iterable, Iterator, List, Optional, Sequence, Tuple
+from typing import Any, Callable, Dict, Iterable, Iterator, List, Optional, Sequence, Tuple
 
 import pytest
 
@@ -59,6 +59,7 @@ from book_translator.pipeline.orchestrator import (
     sha256_file,
     sha256_text,
 )
+from book_translator.translators.base import BaseTranslator
 from tests.conftest import (
     TOOL_VERSION,
     CountingRepository,
@@ -2864,3 +2865,188 @@ def test_overlay_constants_of_domain_and_database_are_identical() -> None:
     for status in ("OVERLAY_EXTRACTED", "OVERLAY_TRANSLATING", "OVERLAY_PAUSED",
                    "OVERLAY_TRANSLATED", "OVERLAY_EXPORTED", "NONE"):
         assert status in db_models.OVERLAY_JOB_STATUSES
+
+
+# --------------------------------------------------------------------------- #
+# Automatic provider fallback on an exhausted quota (--fallback-provider)
+# --------------------------------------------------------------------------- #
+
+
+def pair_factory(
+    providers: Dict[str, BaseTranslator]
+) -> Callable[[str, Any], Result[BaseTranslator]]:
+    """``get_translator``-compatible factory over a name -> translator table."""
+
+    def factory(name: str, settings: Any) -> Result[BaseTranslator]:
+        found = providers.get(name)
+        if found is None:
+            return err(
+                ErrorCode.PROVIDER_CONFIG, f"unknown provider {name!r}", ErrorScope.USER
+            )
+        return Ok(found)
+
+    return factory
+
+
+def build_pair(
+    ws: Workspace,
+    providers: Dict[str, BaseTranslator],
+    **kwargs: Any,
+) -> Orchestrator:
+    clock = FakeClock()
+    return Orchestrator(
+        kwargs.pop("settings", None) or make_settings(concurrency=1),
+        ws.output,
+        tool_version=TOOL_VERSION,
+        run_id=kwargs.pop("run_id", "run000000001"),
+        translator_factory=pair_factory(providers),
+        clock=clock,
+        sleep=clock.sleep,
+        **kwargs,
+    )
+
+
+def named(translator: FakeTranslator, name: str) -> FakeTranslator:
+    translator.name = name
+    return translator
+
+
+def provider_column(ws: Workspace) -> Dict[int, Optional[str]]:
+    db = with_db(ws)
+    try:
+        rows = raw_rows(db, "SELECT id, provider FROM chunks ORDER BY id")
+        return {int(chunk_id): provider for chunk_id, provider in rows}
+    finally:
+        close_database(db)
+
+
+async def test_quota_falls_back_and_records_the_real_provider(tmp_path: Path) -> None:
+    """The user decision: do not stop mid-book on a quota, switch and leave a warning."""
+    md, chunks = paragraphs(5)
+    ws = make_workspace(tmp_path, md)
+    seed(ws, chunks)
+    primary = named(FakeTranslator({3: ["err_456"]}, strategy=GlossaryStrategy.NATIVE), "deepl")
+    secondary = named(FakeTranslator(), "google")
+    orch = build_pair(ws, {"deepl": primary, "google": secondary})
+
+    summary = unwrap(
+        await orch.translate(ws.input_pdf, provider="deepl", fallback_provider="google")
+    )
+
+    assert summary.exit_code == EXIT_SUCCESS
+    assert summary.counts.completed == 5
+    # the job identity is still the primary: arming a fallback is not a provider switch
+    assert summary.provider == "deepl" and job_row(ws)["provider"] == "deepl"
+    # chunks 1-2 were paid for at DeepL, 3-5 came from Google
+    assert provider_column(ws) == {1: "deepl", 2: "deepl", 3: "google", 4: "google", 5: "google"}
+    assert summary.provider_units == {"deepl": 2, "google": 3}
+    rows = chunk_rows(ws)
+    assert rows[2].warnings == ()
+    assert set(rows[3].warnings) == {
+        "provider_fallback:deepl->google",
+        "glossary_unavailable:google",
+    }
+    assert set(rows[5].warnings) == set(rows[3].warnings)
+    assert all(c.status is ChunkStatus.COMPLETED for c in rows.values())
+    # the primary was asked exactly once more than it could serve, and never again
+    assert [c[0] for c in primary.calls] == [1, 2, 3]
+    assert [c[0] for c in secondary.calls] == [3, 4, 5]
+    assert json.loads(ws.output.joinpath("summary.json").read_text("utf-8"))[
+        "provider_units"
+    ] == {"deepl": 2, "google": 3}
+
+
+async def test_fallback_units_survive_into_status(tmp_path: Path) -> None:
+    md, chunks = paragraphs(3)
+    ws = make_workspace(tmp_path, md)
+    seed(ws, chunks)
+    primary = named(FakeTranslator({2: ["err_456"]}), "deepl")
+    orch = build_pair(ws, {"deepl": primary, "google": named(FakeTranslator(), "google")})
+
+    unwrap(await orch.translate(ws.input_pdf, provider="deepl", fallback_provider="google"))
+    report = unwrap(orch.status())
+
+    assert report.provider_units == {"deepl": 1, "google": 2}
+
+
+@pytest.mark.parametrize("outcome", ["err_403", "err_400", "err_5xx"])
+async def test_non_quota_errors_never_trigger_the_fallback(
+    tmp_path: Path, outcome: str
+) -> None:
+    """Auth, bad request and network errors keep their existing meaning."""
+    md, chunks = paragraphs(3)
+    ws = make_workspace(tmp_path, md)
+    seed(ws, chunks)
+    primary = named(FakeTranslator({1: [outcome] * 8}), "deepl")
+    secondary = named(FakeTranslator(), "google")
+    orch = build_pair(
+        ws,
+        {"deepl": primary, "google": secondary},
+        settings=make_settings(concurrency=1, max_retries=1),
+    )
+
+    summary = unwrap(
+        await orch.translate(ws.input_pdf, provider="deepl", fallback_provider="google")
+    )
+
+    assert summary.exit_code in (EXIT_PAUSED, EXIT_PARTIAL)
+    assert not secondary.calls
+    assert all(row == "deepl" or row is None for row in provider_column(ws).values())
+
+
+async def test_fallback_provider_is_built_before_the_run_starts(tmp_path: Path) -> None:
+    """Finding out the fallback is unusable at the moment the quota dies is too late."""
+    md, chunks = paragraphs(2)
+    ws = make_workspace(tmp_path, md)
+    seed(ws, chunks)
+    primary = named(FakeTranslator(), "deepl")
+    orch = build_pair(ws, {"deepl": primary})
+
+    result = await orch.translate(ws.input_pdf, provider="deepl", fallback_provider="google")
+
+    assert isinstance(result, Err)
+    assert result.error.scope is ErrorScope.USER
+    assert "--fallback-provider google" in result.error.message
+    assert not primary.calls  # nothing was sent
+
+
+async def test_fallback_is_off_unless_it_is_asked_for(tmp_path: Path) -> None:
+    md, chunks = paragraphs(3)
+    ws = make_workspace(tmp_path, md)
+    seed(ws, chunks)
+    primary = named(FakeTranslator({1: ["err_456"]}), "deepl")
+    secondary = named(FakeTranslator(), "google")
+    orch = build_pair(ws, {"deepl": primary, "google": secondary})
+
+    summary = unwrap(await orch.translate(ws.input_pdf, provider="deepl"))
+
+    assert summary.exit_code == EXIT_PAUSED  # v1 behaviour, unchanged
+    assert not secondary.calls
+    assert summary.provider_units == {}
+
+
+async def test_a_fallback_run_resumes_on_the_primary(tmp_path: Path) -> None:
+    """The switch lives in the run, not in the state: a later run tries DeepL again
+    (which is the point - the user has topped the quota up by then)."""
+    md, chunks = paragraphs(4)
+    ws = make_workspace(tmp_path, md)
+    seed(ws, chunks)
+    first = named(FakeTranslator({2: ["err_456"]}), "deepl")
+    orch = build_pair(ws, {"deepl": first, "google": named(FakeTranslator(), "google")})
+    unwrap(await orch.translate(ws.input_pdf, provider="deepl", fallback_provider="google"))
+
+    ws.source.write_text(md, encoding="utf-8")
+    second = named(FakeTranslator(), "deepl")
+    again = build_pair(
+        ws,
+        {"deepl": second, "google": named(FakeTranslator(), "google")},
+        run_id="run000000002",
+    )
+    summary = unwrap(
+        await again.translate(
+            ws.input_pdf, provider="deepl", fallback_provider="google", retry_failed=True
+        )
+    )
+
+    assert not second.calls  # everything was already completed, nothing re-sent
+    assert summary.provider_units == {"deepl": 1, "google": 3}  # read back from the column

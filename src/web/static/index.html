@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>book-translator</title>
+<style>
+  :root {
+    --bg: #f4f4f2;
+    --panel: #ffffff;
+    --ink: #1f2328;
+    --muted: #616a75;
+    --line: #d9dce1;
+    --accent: #2f5d8a;
+    --accent-soft: #e8eff6;
+    --ok: #1f7a4d;
+    --warn: #8a6100;
+    --err: #9b2c2c;
+    --err-soft: #fdf0f0;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 32px 16px 64px;
+    background: var(--bg);
+    color: var(--ink);
+    font: 16px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  }
+  main { max-width: 720px; margin: 0 auto; }
+  h1 { font-size: 24px; margin: 0 0 4px; }
+  .sub { color: var(--muted); margin: 0 0 24px; font-size: 14px; }
+  section {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+  h2 { font-size: 15px; margin: 0 0 12px; text-transform: uppercase;
+       letter-spacing: .06em; color: var(--muted); }
+  #drop {
+    border: 2px dashed var(--line);
+    border-radius: 10px;
+    padding: 28px 16px;
+    text-align: center;
+    cursor: pointer;
+    background: #fafbfc;
+    transition: border-color .15s, background .15s;
+  }
+  #drop.over { border-color: var(--accent); background: var(--accent-soft); }
+  #drop p { margin: 4px 0; }
+  #drop .hint { color: var(--muted); font-size: 13px; }
+  #file { display: none; }
+  .chosen { font-weight: 600; word-break: break-all; }
+  fieldset { border: 0; padding: 0; margin: 20px 0 0; }
+  legend { font-weight: 600; font-size: 14px; padding: 0 0 6px; }
+  label.row { display: flex; gap: 10px; align-items: flex-start; margin: 6px 0; cursor: pointer; }
+  label.row span.desc { color: var(--muted); font-size: 13px; display: block; }
+  select {
+    width: 100%; padding: 8px; font: inherit; border: 1px solid var(--line);
+    border-radius: 6px; background: #fff; color: inherit;
+  }
+  button {
+    font: inherit; padding: 10px 18px; border-radius: 6px; cursor: pointer;
+    border: 1px solid var(--accent); background: var(--accent); color: #fff;
+  }
+  button.ghost { background: #fff; color: var(--accent); }
+  button[disabled] { opacity: .5; cursor: not-allowed; }
+  .actions { margin-top: 20px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  .stages { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
+  .stage {
+    font-size: 13px; padding: 4px 10px; border-radius: 999px;
+    border: 1px solid var(--line); color: var(--muted); background: #fafbfc;
+  }
+  .stage.active { border-color: var(--accent); background: var(--accent-soft); color: var(--accent);
+                  font-weight: 600; }
+  .stage.done { border-color: var(--ok); color: var(--ok); }
+  .bar { height: 10px; background: #eceef1; border-radius: 999px; overflow: hidden; }
+  .bar > div { height: 100%; width: 0; background: var(--accent); transition: width .3s; }
+  .counters { margin-top: 10px; font-size: 14px; color: var(--muted); }
+  dl.facts { display: grid; grid-template-columns: auto 1fr; gap: 4px 16px; margin: 0; }
+  dl.facts dt { color: var(--muted); font-size: 14px; }
+  dl.facts dd { margin: 0; font-variant-numeric: tabular-nums; }
+  .downloads { list-style: none; padding: 0; margin: 12px 0 0; }
+  .downloads li { margin: 6px 0; }
+  .downloads a { color: var(--accent); }
+  .warnings { margin: 14px 0 0; padding-left: 20px; color: var(--warn); font-size: 14px; }
+  .box-err { border-color: var(--err); background: var(--err-soft); }
+  .box-err h2 { color: var(--err); }
+  .box-err .msg { font-weight: 600; }
+  .box-err .hint { margin-top: 8px; color: var(--ink); }
+  .box-err .code { margin-top: 8px; font-size: 13px; color: var(--muted);
+                   font-family: ui-monospace, Consolas, monospace; }
+  .hidden { display: none; }
+  .note { font-size: 13px; color: var(--muted); margin-top: 10px; }
+  .big { font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; }
+</style>
+</head>
+<body>
+<main>
+  <h1>book-translator</h1>
+  <p class="sub">İngilizce PDF &rarr; Türkçe. Yerel araç; dosyalar bu bilgisayarda kalır.</p>
+
+  <section id="form-panel">
+    <h2>1 &middot; PDF</h2>
+    <div id="drop" tabindex="0" role="button" aria-label="PDF seç veya sürükle">
+      <p class="chosen" id="chosen">PDF'i buraya sürükleyin</p>
+      <p class="hint">ya da tıklayıp seçin &middot; en çok <span id="max-mb">?</span> MB</p>
+    </div>
+    <input type="file" id="file" accept="application/pdf,.pdf">
+
+    <fieldset>
+      <legend>2 &middot; Mod</legend>
+      <label class="row">
+        <input type="radio" name="mode" value="overlay" checked>
+        <span>overlay
+          <span class="desc">Çeviri kaynak PDF'in içine yazılır: aynı sayfa düzeni,
+          aynı görseller. Çıktı: translated_book.overlay.pdf</span></span>
+      </label>
+      <label class="row">
+        <input type="radio" name="mode" value="reflow">
+        <span>reflow
+          <span class="desc">Metin yeniden dizilir. Çıktı: .md ve .epub</span></span>
+      </label>
+    </fieldset>
+
+    <fieldset>
+      <legend>3 &middot; Sözlük</legend>
+      <select id="glossary"><option value="">sözlük yok</option></select>
+      <p class="note">Sözlükteki onaylı terimler çeviride korunur.</p>
+    </fieldset>
+
+    <fieldset>
+      <legend>4 &middot; Başlat</legend>
+      <label class="row">
+        <input type="checkbox" id="estimate" checked>
+        <span>Önce tahmin göster
+          <span class="desc">Sağlayıcıya tek karakter gönderilmeden kaç karakter
+          gideceği hesaplanır; onaylamadan çeviri başlamaz.</span></span>
+      </label>
+    </fieldset>
+
+    <div class="actions">
+      <button id="go" disabled>Çevir</button>
+      <span class="note" id="form-note"></span>
+    </div>
+  </section>
+
+  <section id="progress-panel" class="hidden">
+    <h2>Çalışıyor</h2>
+    <div class="stages" id="stages"></div>
+    <div class="bar"><div id="bar-fill"></div></div>
+    <p class="counters" id="counters"></p>
+  </section>
+
+  <section id="estimate-panel" class="hidden">
+    <h2>Onay bekliyor</h2>
+    <p>Bu çeviride sağlayıcıya gönderilecek karakter sayısı:</p>
+    <p class="big"><span id="est-chars">0</span> karakter</p>
+    <p class="note"><span id="est-units">0</span> birim çevrilecek.
+       Henüz hiçbir şey gönderilmedi.</p>
+    <div class="actions">
+      <button id="confirm">Onayla ve çevir</button>
+      <button id="cancel" class="ghost">Vazgeç</button>
+    </div>
+  </section>
+
+  <section id="result-panel" class="hidden">
+    <h2>Bitti</h2>
+    <dl class="facts">
+      <dt>Bu çalıştırmada gönderilen</dt><dd><span id="chars-run">0</span> karakter</dd>
+      <dt>Bu iş için toplam</dt><dd><span id="chars-total">0</span> karakter</dd>
+      <dt>Çıkış kodu</dt><dd id="exit-code">0</dd>
+    </dl>
+    <ul class="downloads" id="downloads"></ul>
+    <ul class="warnings hidden" id="warnings"></ul>
+    <div class="actions"><button id="again" class="ghost">Yeni çeviri</button></div>
+  </section>
+
+  <section id="error-panel" class="box-err hidden">
+    <h2>Hata</h2>
+    <p class="msg" id="err-msg"></p>
+    <p class="hint" id="err-hint"></p>
+    <p class="code" id="err-code"></p>
+    <div class="actions"><button id="retry" class="ghost">Yeni çeviri</button></div>
+  </section>
+</main>
+
+<script>
+(function () {
+  "use strict";
+
+  var STAGE_LABELS = {
+    extract: "metin çıkarma",
+    glossary: "sözlük",
+    translate: "çeviri",
+    export: "çıktı yazma"
+  };
+  var STAGES = ["extract", "glossary", "translate", "export"];
+
+  var el = function (id) { return document.getElementById(id); };
+  var show = function (node, on) { node.classList.toggle("hidden", !on); };
+
+  var state = { file: null, jobId: null, timer: null };
+
+  /* ---------------------------------------------------------------- file */
+
+  var drop = el("drop");
+  var fileInput = el("file");
+
+  function chooseFile(f) {
+    if (!f) { return; }
+    if (!/\.pdf$/i.test(f.name)) {
+      el("form-note").textContent = "Yalnızca .pdf dosyası seçilebilir.";
+      return;
+    }
+    state.file = f;
+    el("chosen").textContent = f.name + "  (" + Math.round(f.size / 1024) + " KB)";
+    el("form-note").textContent = "";
+    el("go").disabled = false;
+  }
+
+  drop.addEventListener("click", function () { fileInput.click(); });
+  drop.addEventListener("keydown", function (e) {
+    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fileInput.click(); }
+  });
+  fileInput.addEventListener("change", function () { chooseFile(fileInput.files[0]); });
+  ["dragenter", "dragover"].forEach(function (name) {
+    drop.addEventListener(name, function (e) {
+      e.preventDefault(); drop.classList.add("over");
+    });
+  });
+  ["dragleave", "drop"].forEach(function (name) {
+    drop.addEventListener(name, function (e) {
+      e.preventDefault(); drop.classList.remove("over");
+    });
+  });
+  drop.addEventListener("drop", function (e) {
+    if (e.dataTransfer && e.dataTransfer.files) { chooseFile(e.dataTransfer.files[0]); }
+  });
+
+  /* -------------------------------------------------------------- config */
+
+  fetch("/api/config").then(function (r) { return r.json(); }).then(function (cfg) {
+    el("max-mb").textContent = cfg.max_upload_mb;
+    var select = el("glossary");
+    (cfg.glossaries || []).forEach(function (name) {
+      var option = document.createElement("option");
+      option.value = name;
+      option.textContent = name;
+      select.appendChild(option);
+    });
+  }).catch(function () {
+    el("form-note").textContent = "Sunucu ayarları okunamadı.";
+  });
+
+  /* ----------------------------------------------------------- run / poll */
+
+  function panels(which) {
+    show(el("form-panel"), which === "form");
+    show(el("progress-panel"), which === "progress");
+    show(el("estimate-panel"), which === "estimate");
+    show(el("result-panel"), which === "result");
+    show(el("error-panel"), which === "error");
+  }
+
+  function fail(message, hint, code) {
+    stopPolling();
+    el("err-msg").textContent = message || "Bilinmeyen hata.";
+    el("err-hint").textContent = hint || "";
+    el("err-code").textContent = code || "";
+    panels("error");
+  }
+
+  function readError(response) {
+    return response.json().then(function (body) {
+      var e = (body && body.error) || {};
+      fail(e.message || ("Sunucu hatası (HTTP " + response.status + ")."), e.hint, "");
+    }, function () {
+      fail("Sunucu hatası (HTTP " + response.status + ").", "", "");
+    });
+  }
+
+  el("go").addEventListener("click", function () {
+    if (!state.file) { return; }
+    var data = new FormData();
+    data.append("file", state.file, state.file.name);
+    data.append("mode", document.querySelector('input[name="mode"]:checked').value);
+    data.append("glossary", el("glossary").value);
+    data.append("estimate", el("estimate").checked ? "true" : "false");
+    el("go").disabled = true;
+    panels("progress");
+    renderProgress({ stage: null, completed: 0, total: 0, failed: 0, chars_sent: 0 });
+    fetch("/api/jobs", { method: "POST", body: data }).then(function (r) {
+      if (!r.ok) { el("go").disabled = false; panels("form"); return readError(r); }
+      return r.json().then(function (job) { state.jobId = job.id; apply(job); startPolling(); });
+    }).catch(function () {
+      el("go").disabled = false;
+      panels("form");
+      el("form-note").textContent = "Sunucuya ulaşılamadı.";
+    });
+  });
+
+  el("confirm").addEventListener("click", function () {
+    if (!state.jobId) { return; }
+    panels("progress");
+    fetch("/api/jobs/" + encodeURIComponent(state.jobId) + "/start", { method: "POST" })
+      .then(function (r) {
+        if (!r.ok) { return readError(r); }
+        return r.json().then(function (job) { apply(job); startPolling(); });
+      })
+      .catch(function () { fail("Sunucuya ulaşılamadı.", "", ""); });
+  });
+
+  function reset() {
+    stopPolling();
+    state.jobId = null;
+    el("go").disabled = !state.file;
+    panels("form");
+  }
+  el("cancel").addEventListener("click", reset);
+  el("again").addEventListener("click", reset);
+  el("retry").addEventListener("click", reset);
+
+  function startPolling() {
+    stopPolling();
+    state.timer = window.setInterval(poll, 1000);
+  }
+  function stopPolling() {
+    if (state.timer !== null) { window.clearInterval(state.timer); state.timer = null; }
+  }
+  function poll() {
+    if (!state.jobId) { return; }
+    fetch("/api/jobs/" + encodeURIComponent(state.jobId)).then(function (r) {
+      if (!r.ok) { return readError(r); }
+      return r.json().then(apply);
+    }).catch(function () { /* geçici ağ hatası: bir sonraki yoklamada yeniden denenir */ });
+  }
+
+  /* -------------------------------------------------------------- render */
+
+  function renderProgress(job) {
+    var wrap = el("stages");
+    wrap.textContent = "";
+    var index = STAGES.indexOf(job.stage);
+    STAGES.forEach(function (name, i) {
+      var chip = document.createElement("span");
+      chip.className = "stage" + (i === index ? " active" : (index > i ? " done" : ""));
+      chip.textContent = STAGE_LABELS[name] || name;
+      wrap.appendChild(chip);
+    });
+    var pct = job.total > 0 ? Math.round((job.completed / job.total) * 100) : 0;
+    el("bar-fill").style.width = pct + "%";
+    var parts = [];
+    if (job.total > 0) { parts.push(job.completed + " / " + job.total + " birim"); }
+    if (job.failed > 0) { parts.push(job.failed + " başarısız"); }
+    if (job.chars_sent > 0) { parts.push(job.chars_sent + " karakter gönderildi"); }
+    if (job.phase === "estimating") { parts.unshift("tahmin çıkarılıyor"); }
+    el("counters").textContent = parts.join(" · ");
+  }
+
+  function renderResult(job) {
+    var r = job.result || {};
+    el("chars-run").textContent = r.chars_sent_this_run || 0;
+    el("chars-total").textContent = r.chars_sent_total || 0;
+    el("exit-code").textContent = r.exit_code;
+    var list = el("downloads");
+    list.textContent = "";
+    (r.outputs || []).forEach(function (output) {
+      var item = document.createElement("li");
+      var link = document.createElement("a");
+      link.href = "/api/jobs/" + encodeURIComponent(job.id) +
+                  "/download/" + encodeURIComponent(output.key);
+      link.setAttribute("download", output.name);
+      link.textContent = output.label + " – " + output.name;
+      item.appendChild(link);
+      var size = document.createElement("span");
+      size.className = "note";
+      size.textContent = "  (" + Math.round(output.size_bytes / 1024) + " KB)";
+      item.appendChild(size);
+      list.appendChild(item);
+    });
+    var warnings = el("warnings");
+    warnings.textContent = "";
+    var lines = r.warnings || [];
+    show(warnings, lines.length > 0);
+    lines.forEach(function (line) {
+      var item = document.createElement("li");
+      item.textContent = line;
+      warnings.appendChild(item);
+    });
+  }
+
+  function apply(job) {
+    if (!job || !job.id) { return; }
+    state.jobId = job.id;
+    if (job.phase === "estimating" || job.phase === "running") {
+      renderProgress(job);
+      panels("progress");
+      return;
+    }
+    stopPolling();
+    if (job.phase === "awaiting_confirm") {
+      var est = job.estimate || { chars: 0, units: 0 };
+      el("est-chars").textContent = est.chars;
+      el("est-units").textContent = est.units;
+      panels("estimate");
+      return;
+    }
+    if (job.phase === "error") {
+      if (job.result) { renderResult(job); }
+      var e = job.error || {};
+      fail(e.message, e.hint, e.code ? (e.code + " · çıkış kodu " + e.exit_code) : "");
+      return;
+    }
+    renderResult(job);
+    panels("result");
+  }
+}());
+</script>
+</body>
+</html>

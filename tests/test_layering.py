@@ -2,7 +2,8 @@
 
 Allowed import direction only:
 
-* ``cli``          -> config, logging_setup, pipeline, domain (+ the service registries ``*.base``)
+* ``cli`` / ``web`` -> config, logging_setup, pipeline, domain (+ the service registries
+  ``*.base``); ``web`` is the optional FastAPI front end and sits beside the CLI
 * ``pipeline``     -> extractors, glossary, translators, exporters, domain, config, logging_setup,
   ``database.repository`` and ``database.session`` (never ``database.models`` / raw SQL)
 * services (extractors / glossary / translators / exporters) -> domain, config
@@ -25,11 +26,13 @@ SRC = Path(book_translator.__file__).resolve().parent
 SERVICES: Set[str] = {"extractors", "glossary", "translators", "exporters"}
 REGISTRIES: Set[str] = {f"{PACKAGE}.{service}.base" for service in SERVICES}
 PIPELINE_DATABASE: Set[str] = {f"{PACKAGE}.database.repository", f"{PACKAGE}.database.session"}
+FRONT_ENDS: Set[str] = {"cli", "web"}  # may reach the service registries, nothing else
 DOMAIN_EXTERNAL: Set[str] = {"pydantic", "__future__"}
 
 ALLOWED_LAYERS: Dict[str, Set[str]] = {
     "root": set(),
     "cli": {"config", "logging_setup", "pipeline", "domain"},
+    "web": {"config", "logging_setup", "pipeline", "domain"},
     "config": {"domain"},
     "logging_setup": set(),
     "pipeline": SERVICES | {"domain", "config", "logging_setup"},
@@ -87,10 +90,10 @@ def violation(module: str, target: str) -> Optional[str]:
         return None  # the package root only holds ``__version__``
     if source_layer == target_layer and source_layer != "root":
         return None
-    if source_layer == "cli" and target_layer in SERVICES:
+    if source_layer in FRONT_ENDS and target_layer in SERVICES:
         if any(target == r or target.startswith(r + ".") for r in REGISTRIES):
             return None
-        return f"{module} -> {target} (cli may only use the service registries)"
+        return f"{module} -> {target} ({source_layer} may only use the service registries)"
     if source_layer == "pipeline" and target_layer == "database":
         if any(target == m or target.startswith(m + ".") for m in PIPELINE_DATABASE):
             return None
@@ -145,6 +148,10 @@ def test_checker_recognises_the_forbidden_edges() -> None:
     assert violation(f"{PACKAGE}.pipeline.orchestrator", f"{PACKAGE}.database")
     assert violation(f"{PACKAGE}.pipeline.orchestrator", f"{PACKAGE}.database.sessions.x")
     assert violation(f"{PACKAGE}.cli", f"{PACKAGE}.translators.base.get_translator") is None
+    assert violation(f"{PACKAGE}.web.jobs", f"{PACKAGE}.exporters.base.ExportOptions") is None
+    assert violation(f"{PACKAGE}.web.jobs", f"{PACKAGE}.pipeline.orchestrator.X") is None
+    assert violation(f"{PACKAGE}.web.jobs", f"{PACKAGE}.database.repository.JobRepository")
+    assert violation(f"{PACKAGE}.web.jobs", f"{PACKAGE}.translators.deepl_translator.X")
     assert violation(f"{PACKAGE}.exporters.epub_exporter", f"{PACKAGE}.exporters.base.x") is None
     assert violation(f"{PACKAGE}.cli", f"{PACKAGE}.__version__") is None
     assert violation(f"{PACKAGE}.exporters.base", "markdown.markdown") is None

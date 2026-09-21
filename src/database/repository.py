@@ -1075,6 +1075,22 @@ class ChunkRepository:
         )
 
     @boundary
+    def provider_counts(self, job_id: str) -> Result[Dict[str, int]]:
+        """COMPLETED units per recorded provider (``{provider: units}``).
+
+        The column is written per unit by :meth:`complete`, so a job whose run fell back
+        from one provider to another reports both here - which is what ``summary.json``
+        and ``status`` show.
+        """
+        with self._db.read_session() as session:
+            rows = session.execute(
+                select(m.Chunk.provider, func.count())
+                .where(m.Chunk.job_id == job_id, m.Chunk.status == _COMPLETED)
+                .group_by(m.Chunk.provider)
+            ).all()
+        return Ok({str(name): int(count) for name, count in rows if name})
+
+    @boundary
     def failed_ids(self, job_id: str) -> Result[List[int]]:
         """A2: ids of FAILED chunks in id order."""
         with self._db.read_session() as session:
@@ -1867,6 +1883,22 @@ class OverlayBlockRepository:
                 total_chars=int(row[5]),
             )
         )
+
+    @boundary
+    def provider_counts(self, job_id: str) -> Result[Dict[str, int]]:
+        """COMPLETED units per recorded provider (``{provider: units}``).
+
+        The column is written per unit by :meth:`complete`, so a job whose run fell back
+        from one provider to another reports both here - which is what ``summary.json``
+        and ``status`` show.
+        """
+        with self._db.read_session() as session:
+            rows = session.execute(
+                select(m.OverlayBlock.provider, func.count())
+                .where(m.OverlayBlock.job_id == job_id, m.OverlayBlock.status == _COMPLETED)
+                .group_by(m.OverlayBlock.provider)
+            ).all()
+        return Ok({str(name): int(count) for name, count in rows if name})
 
     @boundary
     def failed_ids(self, job_id: str) -> Result[List[int]]:

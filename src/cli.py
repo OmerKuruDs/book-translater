@@ -75,6 +75,7 @@ from .pipeline.orchestrator import (
     OverlayOptions,
     ProgressEvent,
     StatusReport,
+    describe_provider_units,
     exit_code_for,
     summary_to_jsonable,
 )
@@ -101,7 +102,17 @@ app = typer.Typer(
 
 class ProviderChoice(str, Enum):
     deepl = "deepl"
+    google = "google"
     local = "local"
+
+
+class FallbackChoice(str, Enum):
+    """``--fallback-provider``: the providers plus an explicit off switch."""
+
+    deepl = "deepl"
+    google = "google"
+    local = "local"
+    none = "none"
 
 
 class ExtractorChoice(str, Enum):
@@ -308,6 +319,20 @@ RETRY_FAILED_OPTION = typer.Option(
 )
 ALLOW_PROVIDER_SWITCH_OPTION = typer.Option(
     False, "--allow-provider-switch", help="Resume with a different provider than recorded."
+)
+FALLBACK_PROVIDER_OPTION = typer.Option(
+    None,
+    "--fallback-provider",
+    envvar="BOOK_TRANSLATOR_FALLBACK_PROVIDER",
+    help=(
+        "Switch to this provider (for the rest of the run) if --provider runs out of "
+        "quota mid-translation, so a book does not stop half-translated. Left unset it "
+        "picks any other provider whose key is configured; pass 'none' to switch that "
+        "off. Unlike --allow-provider-switch, which permits a manual change between "
+        "runs, this is automatic and only fires on an exhausted quota."
+    ),
+    show_default="automatic",
+    case_sensitive=False,
 )
 REQUIRE_GLOSSARY_OPTION = typer.Option(
     False, "--require-glossary", help="Refuse to start with 0 approved glossary terms."
@@ -694,6 +719,21 @@ def _warning_line(warning: str) -> str:
     return f"{label}: {warning}"
 
 
+def _provider_units_lines(
+    provider_units: Dict[str, int], primary: Optional[str] = None
+) -> List[str]:
+    """One "units by provider" line, but only when it says something new.
+
+    A job translated entirely by the provider that is already printed above needs no
+    breakdown; a job that fell back to a second provider very much does.
+    """
+    if not provider_units:
+        return []
+    if len(provider_units) == 1 and (primary is None or primary in provider_units):
+        return []
+    return [f"units by provider: {describe_provider_units(provider_units)}"]
+
+
 def _print_summary(common: _Common, summary: JobSummary) -> None:
     if common.json_output:
         payload = summary_to_jsonable(summary)
@@ -713,6 +753,7 @@ def _print_summary(common: _Common, summary: JobSummary) -> None:
         f"chars sent: {summary.chars_sent_this_run} this run, {summary.chars_sent_total} total",
         f"duration: {_format_elapsed(summary.duration_s)}",
     ]
+    lines[3:3] = _provider_units_lines(summary.provider_units, summary.provider)
     if summary.figures is not None:
         lines.append(_figure_line(summary.figures))
     if summary.overlay is not None:
@@ -922,6 +963,7 @@ def run(
     figure_max_mb: Optional[float] = FIGURE_MAX_MB_OPTION,
     min_count: int = MIN_COUNT_OPTION,
     provider: Optional[ProviderChoice] = PROVIDER_OPTION,
+    fallback_provider: Optional[FallbackChoice] = FALLBACK_PROVIDER_OPTION,
     glossary: Optional[Path] = GLOSSARY_OPTION,
     concurrency: Optional[int] = CONCURRENCY_OPTION,
     max_retries: Optional[int] = MAX_RETRIES_OPTION,
@@ -962,6 +1004,7 @@ def run(
     settings = _settings(
         common,
         provider=provider.value if provider else None,
+        fallback_provider=fallback_provider.value if fallback_provider else None,
         extractor=extractor.value if extractor else None,
         concurrency=concurrency,
         max_retries=max_retries,
@@ -999,6 +1042,7 @@ def run(
                 min_chars_per_page=min_chars_per_page,
                 min_count=min_count,
                 provider=settings.provider,
+                fallback_provider=settings.fallback_provider,
                 user_glossary=glossary,
                 retry_failed=retry_failed,
                 allow_provider_switch=allow_provider_switch,
@@ -1136,6 +1180,7 @@ def translate(
     input: Path = INPUT_OPTION,
     output: Path = OUTPUT_OPTION,
     provider: Optional[ProviderChoice] = PROVIDER_OPTION,
+    fallback_provider: Optional[FallbackChoice] = FALLBACK_PROVIDER_OPTION,
     glossary: Optional[Path] = GLOSSARY_OPTION,
     concurrency: Optional[int] = CONCURRENCY_OPTION,
     max_retries: Optional[int] = MAX_RETRIES_OPTION,
@@ -1163,6 +1208,7 @@ def translate(
     settings = _settings(
         common,
         provider=provider.value if provider else None,
+        fallback_provider=fallback_provider.value if fallback_provider else None,
         concurrency=concurrency,
         max_retries=max_retries,
         chunk_min=chunk_min,
@@ -1183,6 +1229,7 @@ def translate(
             lambda: orchestrator.translate(
                 input,
                 provider=settings.provider,
+                fallback_provider=settings.fallback_provider,
                 user_glossary=glossary,
                 retry_failed=retry_failed,
                 allow_provider_switch=allow_provider_switch,
@@ -1302,6 +1349,7 @@ def status(
             f"input sha256: {report.input_sha256}",
             f"provider: {report.provider or '-'} glossary strategy: "
             f"{report.glossary_strategy or '-'}",
+            *_provider_units_lines(report.provider_units),
             f"extractor: {report.extractor or '-'}"
             f"{' (fallback)' if report.fallback_used else ''}",
         ]

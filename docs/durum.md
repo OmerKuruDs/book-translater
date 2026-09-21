@@ -273,3 +273,76 @@ Doğrulama: 752 test / 1 skip, mypy strict 60 dosya, ruff temiz.
 **Testler:** `tests/test_overlay_extractor.py` — sentetik içindekiler sayfası (satır başına bir kayıt), nokta dizisiz paragraf sayfası (regresyon koruması), cümle içi elips leader sayılmıyor, gerçek belge s.16'da hiçbir birim iki satırı kapsamıyor.
 
 Doğrulama: 756 test / 1 skip, mypy strict 60 dosya, ruff temiz.
+
+## Google sağlayıcısı + otomatik yedekleme (2026-09-21) — A kolu
+
+DeepL kotası bu dönem tükendiğinde (HTTP 456) iş ortasında duruyordu. İki parça eklendi: ikinci bir sağlayıcı ve kota bittiğinde ona **otomatik** geçen bir sarmalayıcı.
+
+### 1. `google` sağlayıcısı — `src/translators/google_translate.py`
+
+**Neden v2:** `.env`'deki `GOOGLE_CLOUD_API` bir API anahtarı (`AIza...`). Cloud Translation **v3** API anahtarı kabul etmiyor (servis hesabı ister), bu yüzden **v2 (Basic)** REST uç noktası kullanıldı: `POST https://translation.googleapis.com/language/translate/v2?key=…`, JSON gövde. Bedeli: v2'de sözlük yok (`supports_glossary=False`; sözlük v3 özelliği).
+
+**Sınırlar (kaynaklı):**
+
+| Sınır | Değer | Kaynak |
+|---|---|---|
+| İstek boyutu | **100.000 bayt** (öneri: gecikme için ~5.000 kod noktası) | https://docs.cloud.google.com/translate/quotas — "Content size limits" |
+| Segment (`q`) sayısı | **128**; üstünde `400 "Too many text segments"` | https://github.com/googleapis/google-cloud-python/issues/5425 |
+
+`capabilities`: `max_texts_per_request=128`, `max_chars_per_request=20.000`. Karakter bütçesi bayt sınırından türetildi: 20.000 karakter, hepsi 4 baytlık kod noktası olsa bile 80.000 bayt eder; JSON zarfına yer kalır. İngilizce/Türkçe düzyazı ~1,05 bayt/karakter olduğundan gerçek yükler sınırın çok altında.
+
+**Etiket koruma — `format=html` + `ProtectMode "xml"`:** v2 html kipinde yalnız metin düğümlerini çevirir, işaretlemeyi aynen geçirir; `protect.py`'nin `<x id="n"/>` yer tutucuları tam da bunu gerektiriyor. `supports_tag_protection=True` verildiği için orkestratör bu sağlayıcıya DeepL ile aynı `"xml"` kipini seçiyor. Sentinel kipi (`⟦1⟧`) NMT modelinden düz metin olarak geçer ve boşluklu/eksik dönebilir. Bedeli: html kipinde cevap HTML-kaçışlı geliyor (`&#39;`, `&amp;`), o yüzden her dönen metin `html.unescape`'ten geçiriliyor.
+
+**Kontrol karakterleri:** DeepL'deki hatanın aynısı burada da geçerli (html ayrıştırıcısı tek bir C0 karakterinde tüm isteği reddeder), `strip_control_chars` gönderimden önce uygulanıyor.
+
+**`chars_billed`:** v2 karakter sayısı dönmüyor. Gönderilen (kontrol karakterleri temizlenmiş) yükün karakter sayısı yazılıyor — Google da gönderileni, işaretleme dahil, faturalandırıyor.
+
+**Hata sınıflandırması (`classify_google_status`):** v2 hem "kota bitti" hem "çok hızlısın" için **403** döndürüyor; ayıran tek şey `error.errors[].reason`.
+
+| Durum / reason | Kod | Kapsam |
+|---|---|---|
+| `quotaExceeded`, `dailyLimitExceeded`, `limitExceeded` | `PROVIDER_QUOTA` | `JOB_FATAL` (yedeklemenin tetiği) |
+| 429 veya `userRateLimitExceeded` / `rateLimitExceeded` | `PROVIDER_RATE_LIMITED` (+ `Retry-After`) | `CHUNK_RETRYABLE` |
+| 401, `keyInvalid` / `API_KEY_INVALID` / `accessNotConfigured` / bilinmeyen 403 | `PROVIDER_AUTH` | `JOB_FATAL` |
+| 400 / 404 / 413 / 414 / 415 / 422 | `PROVIDER_BAD_REQUEST` | `CHUNK_FATAL` |
+| 5xx, zaman aşımı, bağlantı | `PROVIDER_TRANSIENT` | `CHUNK_RETRYABLE` |
+
+**Görev tanımından sapma (bilinçli):** görevde `403 userRateLimitExceeded → PROVIDER_QUOTA` isteniyordu. Bu, saniyelik bir hız sınırını "kota bitti" saymak olurdu: Google **ikincil** sağlayıcıyken iş `JOB_FATAL` ile dururdu (arkasında başka yedek yok), **birincil** iken de anlık bir tıkanmada kalıcı olarak terk edilirdi. Bu yüzden `userRateLimitExceeded` yeniden denenebilir hız sınırı, kota ise yalnız `quotaExceeded`/`dailyLimitExceeded`. Tek satırlık bir küme değişikliği (`_RATE_REASONS` / `_QUOTA_REASONS`) ile geri alınabilir.
+
+**Anahtar sızıntısı (CR-01):** `GOOGLE_CLOUD_API` `SecretStr`. Anahtar sorgu parametresiyle gidiyor, httpx ise istisna metnine URL'yi koyuyor — bu yüzden `scrub_secret` üç yoldan da temizliyor: literal anahtar, `?key=…` parametresi ve çıplak `AIza…` deseni. Test bunu hem istisna hem hata gövdesi hem log için sabitliyor.
+
+### 2. Otomatik yedekleme — `src/translators/fallback.py`
+
+`FallbackTranslator(primary, secondary)` bir `BaseTranslator`; orkestratörün çeviri döngüsü değişmedi. Birincil bir kez `PROVIDER_QUOTA` döndüğünde **kalıcı** olarak ikincile geçiyor ve bunu bir kez loglayıp uyarı listesini sabitliyor.
+
+- **Yalnız kota geçiriyor.** Auth / bad request / hız sınırı / ağ hatası eski davranışını koruyor (testle sabit).
+- **Geçiş run boyunca kalıcı**; sonraki run yeniden birincille başlıyor (kullanıcı o arada kotayı yükseltmiş olur).
+- **Her birime uyarı:** `provider_fallback:deepl->google`, sözlük bağlıysa ek olarak `glossary_unavailable:google`.
+- **`capabilities` iki sağlayıcının ortak paydası** (`min` toplu boyut, `and` özellikler): mid-run geçişte birim yeniden parçalanmak zorunda kalmıyor. `supports_glossary` birincilin (sözlük onda bağlanıyor).
+- **`FallbackResponse`** cevabı üreten sağlayıcının adını taşıyor. `ProviderResponse` değişmedi; alt sınıf.
+- İkincil isteğe DeepL sözlük kimliği ve context gönderilmiyor (`_secondary_request`).
+- `prepare` **iki** sağlayıcıyı da bağlıyor: ikincil bağlanamıyorsa hiçbir şey gönderilmeden, para harcanmadan hata veriyor.
+
+### 3. Birim bazlı sağlayıcı kaydı ve iş özeti
+
+Önceden `chunks.provider` / `overlay_blocks.provider` sütununa run boyunca tek bir `translator.name` yazılıyordu. Artık:
+
+- `orchestrator._translate_batch` cevabı `FallbackResponse` ise **gerçekten cevaplayan** sağlayıcıyı `FinishContext.provider`'a koyuyor, uyarıları da birim uyarılarına ekliyor (`_with_warnings`).
+- Çevrilmeyen (verbatim) birimler `active_provider_of(translator)` ile kaydediliyor.
+- `ChunkRepository.provider_counts` / `OverlayBlockRepository.provider_counts` (yeni): COMPLETED birimlerin sağlayıcıya göre sayımı.
+- `JobSummary.provider_units` ve `StatusReport.provider_units` bu sayımı taşıyor → `summary.json`, özet çıktısı ve `status`. Veritabanından okunduğu için devam eden (resume) işlerde önceki run'ın yedekli birimleri de görünüyor. CLI satırı yalnız birden çok sağlayıcı varsa basılıyor: `units by provider: deepl 2, google 3`.
+- `jobs.provider` **birincil** kalıyor: yedekleme açmak bir "provider switch" değil, `--allow-provider-switch` uyarısını tetiklemiyor.
+
+### 4. CLI
+
+`--fallback-provider <ad>` (`translate` ve `run`), `BOOK_TRANSLATOR_FALLBACK_PROVIDER`, **varsayılan kapalı**. Gerekçe: kitabı ikinci bir **ücretli** API'ye (~20 USD/milyon karakter) göndermek ve çıktının bir kısmını başka bir motorun üretmesi kullanıcının kararı; sormadan yapılmaz. `--allow-provider-switch` ile karışmıyor — o, run'lar **arası elle** sağlayıcı değişimine izin veriyor; bu ise run **içinde**, yalnız kotada, otomatik.
+
+Doğrulama (`config.validate_for_provider`): yedek sağlayıcı birincille aynı olamaz, kendi anahtarı yoksa iş başlamadan hata. Ayrıca `ProviderName`/`ProviderChoice`'a `google` eklendi, `providers` komutu listeliyor.
+
+### Bilinen boşluklar
+
+- **Canlı istek atılmadı.** Kullanıcı yasağı gereği ne DeepL'e ne Google'a tek karakter gönderildi; tüm testler sahte HTTP istemcisiyle. Google v2'nin gerçek cevabı ilk canlı koşuda doğrulanmalı (özellikle `format=html` kaçışları ve `<x id="n"/>` yer tutucularının geri dönüşü).
+- Google'da sözlük tamamen düşüyor. `local_nmt.apply_post_replace` gibi bir POST_REPLACE katmanı ileride eklenebilir; şimdilik yalnız `glossary_miss:` sonrası kontrolü var.
+- Yedekleme durumu veritabanına yazılmıyor (bilerek): kalıcılık run ömründe.
+
+Doğrulama: mypy strict + ruff temiz; test sayıları aşağıdaki toplam satırında.

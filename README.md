@@ -139,6 +139,52 @@ the exit code is that failure's (`1` for a bad option or unusable content, `2` w
 optional exporter is merely missing — then the line reads `warning: export_failed:…`). Only an
 export that produced no file at all exits with the error alone.
 
+## Web UI (local)
+
+A one-page browser front end for the same pipeline: **drop a PDF → translate → download**.
+It is an optional extra and the CLI does not depend on it. The interface text is Turkish.
+
+```
+pip install -e ".[web]"
+python -m book_translator.web                 # http://127.0.0.1:8765
+```
+
+`python -m book_translator.web --host --port --work-root --glossaries` overrides the
+defaults; `uvicorn book_translator.web.app:app --host 127.0.0.1 --port 8765` works too.
+Settings (`DEEPL_API_KEY`, chunk sizes, page design, …) come from the environment and the
+`.env` file of the directory you start the server in, exactly as they do for the CLI.
+
+**The estimate gate.** "Önce tahmin göster" is on by default: the server first runs the
+pipeline with `--dry-run`, reports how many characters the provider *would* be sent and
+waits. Nothing is sent until you press *Onayla ve çevir*. When the run finishes, the page
+shows what was actually sent (this run and in total for that job).
+
+Each job gets its own directory under the work root (`./web-jobs/<job id>/`, override with
+`--work-root` or `BOOK_TRANSLATOR_WEB_WORKDIR`); it is an ordinary output directory, so
+`book-translator status -o web-jobs/<job id>` and every CLI stage work on it afterwards. The
+uploaded file is always stored as `input.pdf` inside that directory — the name the browser
+sends is only ever displayed. The glossary dropdown lists the `*.json` files of
+`./glossaries` (`--glossaries` / `BOOK_TRANSLATOR_WEB_GLOSSARIES`), plus "sözlük yok".
+
+| Method | Path | |
+|---|---|---|
+| `GET` | `/` | the page (single file, no CDN, works offline) |
+| `GET` | `/api/config` | glossary list, modes, upload limit |
+| `POST` | `/api/jobs` | multipart `file`, `mode`, `glossary`, `estimate` → job |
+| `POST` | `/api/jobs/{id}/start` | confirm the estimate (or resume) and translate |
+| `GET` | `/api/jobs/{id}` | phase, stage, unit progress, characters, result/error |
+| `GET` | `/api/jobs/{id}/download/{key}` | one produced output (`markdown`, `epub`, `pdf-overlay`, …) |
+
+**Security.** There is no authentication, so the server binds `127.0.0.1` only; another
+`--host` prints a warning. Uploads must carry a `.pdf` name *and* start with the PDF
+signature, the size limit (`BOOK_TRANSLATOR_WEB_MAX_MB`, default 200) is enforced while
+reading rather than trusted from the request, and downloads only ever serve a file the
+export stage reported for that job. Errors are shown with the tool's own redacted
+`AppError.message` plus a Turkish explanation — the API key cannot reach the browser.
+
+Job state lives in memory: restarting the server forgets the job list, but the output
+directories (and `summary.json` inside them) stay on disk.
+
 ## Layout
 
 `src/` is the package root and is installed under the import name `book_translator`
@@ -151,7 +197,7 @@ export that produced no file at all exits with the error alone.
 
 ```
 python -m venv .venv
-.venv/Scripts/pip install -e ".[dev]"
+.venv/Scripts/pip install -e ".[dev,web]"   # "web" only for the browser UI and its tests
 .venv/Scripts/pytest -q
 .venv/Scripts/mypy src
 .venv/Scripts/ruff check src tests

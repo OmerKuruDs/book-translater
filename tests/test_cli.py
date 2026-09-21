@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import dataclasses
 import json
 from datetime import datetime, timezone
 from pathlib import Path
@@ -39,6 +40,7 @@ def isolated_env(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     monkeypatch.chdir(tmp_path)
     monkeypatch.delenv("DEEPL_API_KEY", raising=False)
     monkeypatch.delenv("DEEPL_SERVER_URL", raising=False)
+    monkeypatch.delenv("GOOGLE_CLOUD_API", raising=False)
     for name in list(__import__("os").environ):
         if name.startswith("BOOK_TRANSLATOR_"):
             monkeypatch.delenv(name, raising=False)
@@ -1035,3 +1037,118 @@ def test_a_changed_source_pdf_still_exports_md_through_the_cli(tmp_path: Path) -
     assert "2D (what?) — TR:2D (what?)" in markdown  # the paid label translations survive
     assert (ws.output / "images" / "p002-f01.png").read_bytes() == png  # never re-rendered
     assert not (ws.output / "images" / "p002-f01.tr.png").exists()
+
+
+# --------------------------------------------------------------------------- #
+# --fallback-provider (automatic switch on an exhausted quota)
+# --------------------------------------------------------------------------- #
+
+
+GOOGLE_KEY = "AIzaSyD-FAKE-key-for-tests-0123456789"
+
+
+def test_google_is_listed_as_a_provider() -> None:
+    rows = json.loads(runner.invoke(cli.app, ["providers", "--json"]).stdout)
+    google = next(row for row in rows if row["name"] == "google")
+    assert google["available"] is False and "GOOGLE_CLOUD_API" in google["detail"]
+
+    with_key = json.loads(
+        runner.invoke(
+            cli.app, ["providers", "--json"], env={"GOOGLE_CLOUD_API": GOOGLE_KEY}
+        ).stdout
+    )
+    ready = next(row for row in with_key if row["name"] == "google")
+    assert ready["available"] is True
+    assert "post-check only" in ready["detail"]  # v2 has no glossary
+    assert GOOGLE_KEY not in json.dumps(with_key)
+
+
+def test_fallback_provider_is_forwarded_to_both_commands(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setattr(cli, "Orchestrator", StubOrchestrator)
+    pdf = tmp_path / "in.pdf"
+    pdf.write_bytes(b"%PDF-1.4\n")
+    env = {"DEEPL_API_KEY": "abc", "GOOGLE_CLOUD_API": GOOGLE_KEY}
+
+    for command, key in (("run", "run_kwargs"), ("translate", "translate_kwargs")):
+        result = runner.invoke(
+            cli.app,
+            [command, "-i", str(pdf), "-o", str(tmp_path / "out"),
+             "--fallback-provider", "google"],
+            env=env,
+        )
+        assert result.exit_code == EXIT_SUCCESS, result.output
+        assert StubOrchestrator.received[key]["fallback_provider"] == "google"
+
+
+def test_fallback_provider_defaults_to_off(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Off by default: sending the book to a second paid API is the user's call."""
+    monkeypatch.setattr(cli, "Orchestrator", StubOrchestrator)
+    pdf = tmp_path / "in.pdf"
+    pdf.write_bytes(b"%PDF-1.4\n")
+
+    result = runner.invoke(
+        cli.app, ["translate", "-i", str(pdf), "-o", str(tmp_path / "out")],
+        env={"DEEPL_API_KEY": "abc"},
+    )
+
+    assert result.exit_code == EXIT_SUCCESS, result.output
+    assert StubOrchestrator.received["translate_kwargs"]["fallback_provider"] is None
+
+
+def test_fallback_provider_needs_its_own_key(tmp_path: Path) -> None:
+    pdf = tmp_path / "in.pdf"
+    pdf.write_bytes(b"%PDF-1.4\n")
+
+    result = runner.invoke(
+        cli.app,
+        ["translate", "-i", str(pdf), "-o", str(tmp_path / "out"),
+         "--fallback-provider", "google"],
+        env={"DEEPL_API_KEY": "abc"},
+    )
+
+    assert result.exit_code == EXIT_FAILURE
+    assert "GOOGLE_CLOUD_API" in result.output and "--fallback-provider" in result.output
+
+
+def test_fallback_provider_cannot_be_the_primary(tmp_path: Path) -> None:
+    pdf = tmp_path / "in.pdf"
+    pdf.write_bytes(b"%PDF-1.4\n")
+
+    result = runner.invoke(
+        cli.app,
+        ["translate", "-i", str(pdf), "-o", str(tmp_path / "out"),
+         "--provider", "deepl", "--fallback-provider", "deepl"],
+        env={"DEEPL_API_KEY": "abc"},
+    )
+
+    assert result.exit_code == EXIT_FAILURE
+    assert "also the primary provider" in result.output
+
+
+def test_summary_prints_the_provider_breakdown_only_when_it_says_something() -> None:
+    single = dataclasses.replace(_summary(EXIT_SUCCESS), provider_units={"deepl": 4})
+    mixed = dataclasses.replace(
+        _summary(EXIT_SUCCESS), provider_units={"deepl": 2, "google": 2}
+    )
+    common = cli._common(Path("."), None, None, True, False, False)
+
+    with_one = _capture_summary(common, single)
+    with_two = _capture_summary(common, mixed)
+
+    assert "units by provider" not in with_one
+    assert "units by provider: deepl 2, google 2" in with_two
+
+
+def _capture_summary(common: Any, summary: JobSummary) -> str:
+    printed: List[str] = []
+    original = cli.typer.echo
+    try:
+        cli.typer.echo = printed.append  # type: ignore[assignment]
+        cli._print_summary(common, summary)
+    finally:
+        cli.typer.echo = original  # type: ignore[assignment]
+    return "\n".join(printed)

@@ -6,7 +6,7 @@ Frozen dataclasses only; no I/O, no third-party imports.
 from __future__ import annotations
 
 import hashlib
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from typing import Dict, List, Literal, Optional, Tuple
@@ -325,6 +325,9 @@ class JobSummary:
     figures: Optional[FigureTotals] = None  # from figures.json when present (v1.1, FR-37)
     mode: str = "reflow"  # v1.1 F2: "reflow" | "overlay" (the pass this run worked on)
     overlay: Optional[OverlaySummary] = None  # v1.1 F2: overlay pass state (translate/export)
+    # COMPLETED units per provider that actually translated them (``{"deepl": 61,
+    # "google": 12}``): with --fallback-provider a job can hold work from two providers.
+    provider_units: Dict[str, int] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)

@@ -7,8 +7,9 @@ import dataclasses
 import random
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Sequence
+from typing import Any, Dict, List, Optional, Sequence, Tuple
 
+import httpx
 import pytest
 from deepl import exceptions as deepl_exc
 from pydantic import SecretStr
@@ -20,11 +21,20 @@ from book_translator.domain.models import (
     GlossaryStatus,
     GlossaryStrategy,
 )
-from book_translator.domain.result import Err, ErrorCode, ErrorScope, Ok, Result, unwrap
+from book_translator.domain.result import (
+    AppError,
+    Err,
+    ErrorCode,
+    ErrorScope,
+    Ok,
+    Result,
+    unwrap,
+)
 from book_translator.pipeline.backoff import AdaptiveLimiter, BackoffPolicy, compute_delay
 from book_translator.translators.base import (
     BaseTranslator,
     GlossaryBinding,
+    ProviderResponse,
     TranslationRequest,
     get_translator,
     list_translators,
@@ -34,8 +44,11 @@ from book_translator.translators.deepl_translator import (
     classify_deepl_exception,
     glossary_name_for,
 )
+from book_translator.translators.fallback import FallbackResponse, FallbackTranslator
+from book_translator.translators.google_translate import ENDPOINT, GoogleTranslator
 from book_translator.translators.llm_base import MAX_PROMPT_TERMS, BaseLLMTranslator, build_prompt
 from book_translator.translators.local_nmt import LocalNMTTranslator, apply_post_replace
+from tests.conftest import DEFAULT_CAPABILITIES, FakeTranslator, Outcome
 
 # --------------------------------------------------------------------------- #
 # helpers
@@ -301,7 +314,7 @@ async def test_limiter_cancelled_waiter_does_not_leak_permit() -> None:
 
 
 def test_registry_lists_and_rejects_unknown(monkeypatch: pytest.MonkeyPatch) -> None:
-    assert list_translators() == ["deepl", "local"]
+    assert list_translators() == ["deepl", "google", "local"]
     result = get_translator("nope", settings_with_key())
     assert isinstance(result, Err) and result.error.code == ErrorCode.PROVIDER_CONFIG
 
@@ -689,3 +702,494 @@ async def test_deepl_strips_control_characters_from_the_context_window() -> None
     )
     assert isinstance(result, Ok)
     assert client.calls[0]["context"] == "page text"
+
+
+# --------------------------------------------------------------------------- #
+# Google Cloud Translation v2 (Basic)
+# --------------------------------------------------------------------------- #
+
+
+GOOGLE_KEY = "AIzaSyD-FAKE-key-for-tests-0123456789"
+
+
+@dataclass
+class FakeHttpResponse:
+    """Minimal stand-in for ``httpx.Response`` (only what the provider reads)."""
+
+    status_code: int
+    payload: Any = None
+    headers: Dict[str, str] = dataclasses.field(default_factory=dict)
+    raises: Optional[BaseException] = None
+
+    def json(self) -> Any:
+        if self.raises is not None:
+            raise self.raises
+        return self.payload
+
+
+class FakeHttpClient:
+    """Async HTTP client that never leaves the process."""
+
+    def __init__(
+        self,
+        responses: Optional[Sequence[FakeHttpResponse]] = None,
+        raise_exc: Optional[BaseException] = None,
+    ) -> None:
+        self.responses = list(responses or [])
+        self.raise_exc = raise_exc
+        self.calls: List[Dict[str, Any]] = []
+        self.closed = False
+
+    async def post(self, url: str, **kwargs: Any) -> FakeHttpResponse:
+        self.calls.append({"url": url, **kwargs})
+        if self.raise_exc is not None:
+            raise self.raise_exc
+        if self.responses:
+            return self.responses.pop(0)
+        texts = list(kwargs["json"]["q"])
+        return FakeHttpResponse(
+            200,
+            {
+                "data": {
+                    "translations": [
+                        {"translatedText": "TR:" + t, "detectedSourceLanguage": "en"}
+                        for t in texts
+                    ]
+                }
+            },
+        )
+
+    async def aclose(self) -> None:
+        self.closed = True
+
+
+def google_settings(key: Optional[str] = GOOGLE_KEY, **kw: Any) -> Settings:
+    return Settings(_env_file=None, google_cloud_api=key, **kw)  # type: ignore[call-arg]
+
+
+def make_google(client: FakeHttpClient, key: Optional[str] = GOOGLE_KEY) -> GoogleTranslator:
+    made = GoogleTranslator.create(google_settings(key), client_factory=lambda: client)
+    translator = unwrap(made)
+    assert isinstance(translator, GoogleTranslator)
+    return translator
+
+
+def google_error(status: int, reason: str, message: str = "boom") -> FakeHttpResponse:
+    return FakeHttpResponse(
+        status,
+        {"error": {"code": status, "message": message, "errors": [{"reason": reason}]}},
+    )
+
+
+async def test_google_translates_a_batch_and_reports_what_it_sent() -> None:
+    client = FakeHttpClient()
+    translator = make_google(client)
+
+    response = unwrap(await translator.translate(["Hello", "World"], request()))
+
+    assert response.texts == ["TR:Hello", "TR:World"]
+    assert response.chars_billed == len("Hello") + len("World")  # v2 reports no count
+    assert response.detected_source_lang == "EN"
+    call = client.calls[0]
+    assert call["url"] == ENDPOINT
+    assert call["params"] == {"key": GOOGLE_KEY}
+    assert call["json"] == {
+        "q": ["Hello", "World"],
+        "source": "en",
+        "target": "tr",
+        "format": "html",  # tag protection for the <x id="n"/> placeholders
+    }
+
+
+async def test_google_unescapes_the_html_mode_answer() -> None:
+    """``format=html`` means the answer comes back HTML-escaped."""
+    escaped = "Kitab&#39;in &amp; kalemin &lt;x id=&quot;1&quot;/&gt;"
+    client = FakeHttpClient(
+        [FakeHttpResponse(200, {"data": {"translations": [{"translatedText": escaped}]}})]
+    )
+    translator = make_google(client)
+
+    response = unwrap(await translator.translate(["The book's & pen"], request()))
+
+    assert response.texts == ["Kitab'in & kalemin <x id=\"1\"/>"]
+
+
+async def test_google_quota_is_job_fatal() -> None:
+    client = FakeHttpClient([google_error(403, "quotaExceeded", "quota gone")])
+    translator = make_google(client)
+
+    result = await translator.translate(["a"], request())
+
+    assert isinstance(result, Err)
+    assert result.error.code == ErrorCode.PROVIDER_QUOTA
+    assert result.error.scope == ErrorScope.JOB_FATAL
+    assert result.error.context["http_status"] == 403
+
+
+async def test_google_403_rate_limit_is_retryable_not_a_quota() -> None:
+    """v2 reports "too fast" and "quota gone" both as 403; only the reason separates them.
+
+    Reading ``userRateLimitExceeded`` as a quota would make the automatic fallback
+    abandon the primary provider over a two-second hiccup.
+    """
+    client = FakeHttpClient([google_error(403, "userRateLimitExceeded")])
+    translator = make_google(client)
+
+    result = await translator.translate(["a"], request())
+
+    assert isinstance(result, Err)
+    assert result.error.code == ErrorCode.PROVIDER_RATE_LIMITED
+    assert result.error.scope == ErrorScope.CHUNK_RETRYABLE
+
+
+async def test_google_429_carries_retry_after() -> None:
+    client = FakeHttpClient(
+        [FakeHttpResponse(429, {"error": {"message": "slow down"}}, {"Retry-After": "7"})]
+    )
+    translator = make_google(client)
+
+    result = await translator.translate(["a"], request())
+
+    assert isinstance(result, Err)
+    assert result.error.code == ErrorCode.PROVIDER_RATE_LIMITED
+    assert result.error.retry_after_s == 7.0
+
+
+async def test_google_400_is_chunk_fatal() -> None:
+    client = FakeHttpClient([google_error(400, "invalid", "Too many text segments")])
+    translator = make_google(client)
+
+    result = await translator.translate(["a"], request())
+
+    assert isinstance(result, Err)
+    assert result.error.code == ErrorCode.PROVIDER_BAD_REQUEST
+    assert result.error.scope == ErrorScope.CHUNK_FATAL
+    assert "Too many text segments" in result.error.message
+
+
+@pytest.mark.parametrize(
+    ("status", "reason"),
+    [(401, ""), (400, "API_KEY_INVALID"), (403, "accessNotConfigured"), (403, "somethingElse")],
+)
+async def test_google_auth_failures_stop_the_job(status: int, reason: str) -> None:
+    client = FakeHttpClient([google_error(status, reason, "API key not valid")])
+    translator = make_google(client)
+
+    result = await translator.translate(["a"], request())
+
+    assert isinstance(result, Err)
+    assert result.error.code == ErrorCode.PROVIDER_AUTH
+    assert result.error.scope == ErrorScope.JOB_FATAL
+
+
+async def test_google_transport_error_is_transient() -> None:
+    client = FakeHttpClient(raise_exc=httpx.ConnectError("nope"))
+    translator = make_google(client)
+
+    result = await translator.translate(["a"], request())
+
+    assert isinstance(result, Err)
+    assert result.error.code == ErrorCode.PROVIDER_TRANSIENT
+    assert result.error.scope == ErrorScope.CHUNK_RETRYABLE
+
+
+async def test_google_response_shape_is_verified() -> None:
+    client = FakeHttpClient(
+        [FakeHttpResponse(200, {"data": {"translations": [{"translatedText": "one"}]}})]
+    )
+    translator = make_google(client)
+
+    result = await translator.translate(["a", "b"], request())
+
+    assert isinstance(result, Err)
+    assert result.error.code == ErrorCode.PROVIDER_EMPTY_RESPONSE
+    assert result.error.scope == ErrorScope.CHUNK_RETRYABLE
+
+
+async def test_google_strips_control_characters_before_sending() -> None:
+    """Same bug as the DeepL one: ``format=html`` parses the payload."""
+    client = FakeHttpClient()
+    translator = make_google(client)
+
+    response = unwrap(await translator.translate(["Matrix" + chr(0x14) + " 1"], request()))
+
+    assert client.calls[0]["json"]["q"] == ["Matrix 1"]
+    assert response.chars_billed == len("Matrix 1")  # billed for what was actually sent
+
+
+async def test_google_splits_batches_at_the_documented_limits() -> None:
+    client = FakeHttpClient()
+    translator = make_google(client)
+    caps = GoogleTranslator.capabilities
+    assert (caps.max_texts_per_request, caps.max_chars_per_request) == (128, 20_000)
+
+    unwrap(await translator.translate([f"t{i}" for i in range(130)], request()))
+    assert [len(c["json"]["q"]) for c in client.calls] == [128, 2]
+
+    client.calls.clear()
+    unwrap(await translator.translate(["x" * 12_000, "y" * 12_000], request()))
+    assert [len(c["json"]["q"]) for c in client.calls] == [1, 1]
+
+
+async def test_google_has_no_glossary_but_still_binds() -> None:
+    translator = make_google(FakeHttpClient())
+    binding = unwrap(await translator.prepare(glossary(("gouge", "gouge")), "run1"))
+    assert binding.strategy is GlossaryStrategy.NONE
+    assert binding.provider_glossary_id is None
+    assert GoogleTranslator.capabilities.supports_glossary is False
+    # format=html carries the <x id="n"/> placeholders, so the xml protect mode applies
+    assert GoogleTranslator.capabilities.supports_tag_protection is True
+    assert GoogleTranslator.capabilities.supports_context is False
+
+
+def test_google_create_without_key_fails() -> None:
+    result = GoogleTranslator.create(google_settings(None), client_factory=FakeHttpClient)
+    assert isinstance(result, Err)
+    assert result.error.code == ErrorCode.PROVIDER_CONFIG
+    assert result.error.scope == ErrorScope.USER
+    assert "GOOGLE_CLOUD_API" in result.error.message
+
+
+async def test_google_never_leaks_the_api_key(caplog: pytest.LogCaptureFixture) -> None:
+    """CR-01 for the Google key: httpx puts the request URL - key and all - into its
+    exception text, and a proxy can echo the key back in an error body."""
+    leaky = httpx.ConnectError(f"failed for {ENDPOINT}?key={GOOGLE_KEY}&x=1")
+    client = FakeHttpClient(raise_exc=leaky)
+    translator = make_google(client)
+
+    with caplog.at_level("DEBUG"):
+        result = await translator.translate(["a"], request())
+
+    assert isinstance(result, Err)
+    printed = "\n".join(
+        [result.error.message, str(result.error.cause or ""), str(result.error), caplog.text]
+    )
+    assert GOOGLE_KEY not in printed and "AIza" not in printed
+    assert "key=***" in str(result.error.cause)
+
+    echoed = FakeHttpClient([google_error(403, "forbidden", f"bad key {GOOGLE_KEY}")])
+    body_result = await make_google(echoed).translate(["a"], request())
+    assert isinstance(body_result, Err)
+    assert GOOGLE_KEY not in str(body_result.error)
+    assert GOOGLE_KEY not in repr(google_settings())  # SecretStr repr
+
+
+async def test_google_aclose_closes_the_client() -> None:
+    client = FakeHttpClient()
+    translator = make_google(client)
+    await translator.aclose()
+    assert client.closed is True
+
+
+# --------------------------------------------------------------------------- #
+# Automatic fallback wrapper (user decision: switch automatically, warn)
+# --------------------------------------------------------------------------- #
+
+
+def quota_script(*chunk_ids: int) -> Dict[int, Sequence[Outcome]]:
+    return {chunk_id: ["err_456"] for chunk_id in chunk_ids}
+
+
+def make_pair(
+    *,
+    primary_script: Optional[Dict[int, Sequence[Outcome]]] = None,
+    secondary_glossary: bool = False,
+) -> Tuple[FakeTranslator, FakeTranslator, FallbackTranslator]:
+    primary = FakeTranslator(
+        primary_script,
+        capabilities=dataclasses.replace(
+            DEFAULT_CAPABILITIES, supports_glossary=True, supports_context=True
+        ),
+        strategy=GlossaryStrategy.NATIVE,
+    )
+    primary.name = "primary"
+    secondary = FakeTranslator(
+        capabilities=dataclasses.replace(
+            DEFAULT_CAPABILITIES,
+            supports_glossary=secondary_glossary,
+            max_texts_per_request=128,
+            max_chars_per_request=20_000,
+        )
+    )
+    secondary.name = "secondary"
+    return primary, secondary, FallbackTranslator(primary, secondary)
+
+
+async def test_fallback_switches_on_quota_and_names_the_provider() -> None:
+    primary, secondary, translator = make_pair(primary_script=quota_script(1))
+    unwrap(await translator.prepare(glossary(("gouge", "gouge")), "run1"))
+
+    response = unwrap(await translator.translate(["a"], request(chunk_id=1)))
+
+    assert isinstance(response, FallbackResponse)
+    assert response.provider == "secondary"
+    assert response.warnings == ("provider_fallback:primary->secondary",
+                                 "glossary_unavailable:secondary")
+    assert len(primary.calls) == 1 and len(secondary.calls) == 1
+    assert translator.switched is True and translator.active_provider == "secondary"
+
+
+async def test_fallback_is_permanent_for_the_run() -> None:
+    """Retrying the primary per unit would pay for a failed round trip every time."""
+    primary, secondary, translator = make_pair(primary_script=quota_script(1))
+    unwrap(await translator.prepare(glossary(), "run1"))
+
+    for chunk_id in (1, 2, 3):
+        unwrap(await translator.translate([f"t{chunk_id}"], request(chunk_id=chunk_id)))
+
+    assert len(primary.calls) == 1  # only the one that hit the quota
+    assert [c[0] for c in secondary.calls] == [1, 2, 3]
+
+
+async def test_fallback_tags_the_primary_response_too() -> None:
+    primary, secondary, translator = make_pair()
+    unwrap(await translator.prepare(glossary(), "run1"))
+
+    response = unwrap(await translator.translate(["a"], request()))
+
+    assert isinstance(response, FallbackResponse)
+    assert response.provider == "primary" and response.warnings == ()
+    assert not secondary.calls
+
+
+@pytest.mark.parametrize("outcome", ["err_429", "err_403", "err_400", "err_5xx"])
+async def test_only_a_quota_error_triggers_the_fallback(outcome: str) -> None:
+    primary, secondary, translator = make_pair(primary_script={1: [outcome]})
+    unwrap(await translator.prepare(glossary(), "run1"))
+
+    result = await translator.translate(["a"], request(chunk_id=1))
+
+    assert isinstance(result, Err)
+    assert not secondary.calls
+    assert translator.switched is False
+
+
+async def test_fallback_warns_about_the_glossary_only_when_one_is_bound() -> None:
+    primary, secondary, translator = make_pair(primary_script=quota_script(1))
+    primary.strategy = GlossaryStrategy.NONE  # nothing bound: nothing to lose
+    unwrap(await translator.prepare(glossary(), "run1"))
+
+    response = unwrap(await translator.translate(["a"], request(chunk_id=1)))
+
+    assert isinstance(response, FallbackResponse)
+    assert response.warnings == ("provider_fallback:primary->secondary",)
+
+
+async def test_fallback_keeps_the_glossary_warning_off_when_the_secondary_has_one() -> None:
+    primary, secondary, translator = make_pair(
+        primary_script=quota_script(1), secondary_glossary=True
+    )
+    unwrap(await translator.prepare(glossary(("gouge", "gouge")), "run1"))
+
+    response = unwrap(await translator.translate(["a"], request(chunk_id=1)))
+
+    assert isinstance(response, FallbackResponse)
+    assert response.warnings == ("provider_fallback:primary->secondary",)
+
+
+async def test_fallback_strips_what_the_secondary_cannot_take() -> None:
+    primary, secondary, translator = make_pair(primary_script=quota_script(1))
+    unwrap(await translator.prepare(glossary(("gouge", "gouge")), "run1"))
+    binding = GlossaryBinding(GlossaryStrategy.NATIVE, "deepl-glossary-id", "h" * 64)
+    sent = dataclasses.replace(request(chunk_id=1, binding=binding), context="page text")
+
+    captured: List[TranslationRequest] = []
+    original = secondary.translate
+
+    async def spy(texts: Sequence[str], req: TranslationRequest) -> Result[ProviderResponse]:
+        captured.append(req)
+        return await original(texts, req)
+
+    secondary.translate = spy  # type: ignore[method-assign]
+    unwrap(await translator.translate(["a"], sent))
+
+    assert captured[0].glossary is None  # a DeepL glossary id means nothing to Google
+    assert captured[0].context is None
+
+
+async def test_fallback_capabilities_are_the_common_ground() -> None:
+    primary, secondary, translator = make_pair()
+    caps = translator.capabilities
+    assert caps.max_texts_per_request == min(
+        primary.capabilities.max_texts_per_request, secondary.capabilities.max_texts_per_request
+    )
+    assert caps.max_chars_per_request == min(
+        primary.capabilities.max_chars_per_request, secondary.capabilities.max_chars_per_request
+    )
+    assert caps.supports_context is False  # the secondary has none
+    assert caps.supports_glossary is True  # the primary binds it
+
+
+async def test_fallback_prepare_binds_both_and_closes_both() -> None:
+    primary, secondary, translator = make_pair()
+
+    binding = unwrap(await translator.prepare(glossary(("a", "b")), "run1"))
+
+    assert binding.strategy is GlossaryStrategy.NATIVE  # the primary's
+    assert len(primary.prepared) == 1 and len(secondary.prepared) == 1
+    await translator.aclose()
+    assert primary.closed and secondary.closed
+
+
+async def test_fallback_prepare_fails_fast_when_the_secondary_cannot_bind() -> None:
+    primary, secondary, translator = make_pair()
+    secondary.prepare_error = AppError(
+        ErrorCode.GLOSSARY_BIND_FAILED, "no", ErrorScope.JOB_FATAL
+    )
+
+    result = await translator.prepare(glossary(("a", "b")), "run1")
+
+    assert isinstance(result, Err) and result.error.code == ErrorCode.GLOSSARY_BIND_FAILED
+
+
+def test_fallback_is_not_reachable_through_the_registry() -> None:
+    assert "fallback" not in list_translators()
+    result = FallbackTranslator.create(settings_with_key())
+    assert isinstance(result, Err) and result.error.code == ErrorCode.PROVIDER_CONFIG
+
+
+# --------------------------------------------------------------------------- #
+# automatic fallback resolution
+# --------------------------------------------------------------------------- #
+
+
+def test_a_configured_second_provider_arms_the_fallback_by_itself() -> None:
+    """The user asked for this: a run must not stop half-way through a book because the
+    primary's quota died. With a second provider's key present, the fallback is armed
+    without a flag."""
+    both = settings_with_key(google_cloud_api="AIza" + "x" * 35)
+    assert both.effective_fallback_provider() == "google"
+
+
+def test_without_a_second_key_there_is_no_fallback_and_no_error() -> None:
+    """A user with one provider sees no change - and no complaint about a missing key."""
+    only_deepl = settings_with_key()
+    assert only_deepl.effective_fallback_provider() is None
+    assert unwrap(only_deepl.validate_fallback_provider()) is None
+
+
+def test_the_automatic_fallback_can_be_switched_off() -> None:
+    both = settings_with_key(google_cloud_api="AIza" + "x" * 35, fallback_provider="none")
+    assert both.effective_fallback_provider() is None
+    assert unwrap(both.validate_fallback_provider()) is None
+
+
+def test_an_explicit_fallback_wins_over_the_automatic_one() -> None:
+    both = settings_with_key(google_cloud_api="AIza" + "x" * 35, fallback_provider="local")
+    assert both.effective_fallback_provider() == "local"
+
+
+def test_the_fallback_is_never_the_primary_provider() -> None:
+    """Primary google: the automatic pick has to be the *other* configured provider."""
+    google_first = settings_with_key(
+        google_cloud_api="AIza" + "x" * 35, provider="google",
+    )
+    assert google_first.effective_fallback_provider() == "deepl"
+
+
+def test_an_unknown_fallback_name_is_a_user_error() -> None:
+    bad = settings_with_key(fallback_provider="nope")
+    result = bad.validate_fallback_provider()
+    assert isinstance(result, Err)
+    assert result.error.code is ErrorCode.PROVIDER_CONFIG
+    assert "nope" in result.error.message

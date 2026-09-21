@@ -39,6 +39,7 @@ from typing import (
     Iterable,
     Iterator,
     List,
+    Mapping,
     Optional,
     Sequence,
     Tuple,
@@ -138,6 +139,7 @@ from ..translators.base import (
     TranslationRequest,
     get_translator,
 )
+from ..translators.fallback import FallbackResponse, FallbackTranslator
 from ..translators.protect import ProtectMode
 from .assembler import assemble
 from .backoff import AdaptiveLimiter, BackoffPolicy
@@ -187,7 +189,9 @@ __all__ = [
     "Orchestrator",
     "ProgressEvent",
     "StatusReport",
+    "active_provider_of",
     "default_formats",
+    "describe_provider_units",
     "exit_code_for",
     "normalise_formats",
     "outcome_name",
@@ -354,6 +358,7 @@ class StatusReport:
     figures: Optional[FigureTotals] = None  # from figures.json when present (v1.1)
     overlay: Optional[Dict[str, Any]] = None  # overlay pass section (v1.1 F2, 5.6)
     mode: Optional[str] = None  # mode of the last run
+    provider_units: Dict[str, int] = field(default_factory=dict)  # COMPLETED per provider
 
 
 # --------------------------------------------------------------------------- #
@@ -558,6 +563,7 @@ class _TranslateContext:
     pause_patch: JobPatch = field(default_factory=lambda: JobPatch(status="PAUSED"))
     stats: _RunStats = field(default_factory=_RunStats)
     empty_counts: Dict[int, int] = field(default_factory=dict)
+    provider_units: Dict[str, int] = field(default_factory=dict)  # this run, per provider
     pause_error: Optional[AppError] = None
     lease_lost: Optional[AppError] = None
     db_error: Optional[AppError] = None
@@ -623,6 +629,31 @@ def _internal(stage: str, exc: BaseException) -> Err:
 
 def _interrupted() -> Err:
     return err(ErrorCode.INTERRUPTED, "interrupted by the user; state intact", ErrorScope.USER)
+
+
+def active_provider_of(translator: BaseTranslator) -> str:
+    """The provider a request would reach now: ``FallbackTranslator`` may have switched."""
+    if isinstance(translator, FallbackTranslator):
+        return translator.active_provider
+    return translator.name
+
+
+def describe_provider_units(counts: Mapping[str, int]) -> str:
+    """``{"deepl": 61, "google": 12}`` -> ``"deepl 61, google 12"`` (empty -> "")."""
+    return ", ".join(f"{name} {count}" for name, count in sorted(counts.items()))
+
+
+def _with_warnings(
+    result: Result[TranslationResult], extra: Tuple[str, ...]
+) -> Result[TranslationResult]:
+    """Append ``extra`` to a unit result's warnings (provider fallback notices)."""
+    if not isinstance(result, Ok) or not extra:
+        return result
+    present = result.value.warnings
+    missing = tuple(w for w in extra if w not in present)
+    if not missing:
+        return result
+    return Ok(dataclasses.replace(result.value, warnings=present + missing))
 
 
 def _zero_outcome(exit_code: int) -> RunOutcome:
@@ -1585,6 +1616,7 @@ class Orchestrator:
         input_pdf: Path,
         *,
         provider: Optional[str] = None,
+        fallback_provider: Optional[str] = None,
         user_glossary: Optional[Path] = None,
         retry_failed: bool = False,
         allow_provider_switch: bool = False,
@@ -1635,6 +1667,9 @@ class Orchestrator:
                 result = await self._translate_bound(
                     bound,
                     provider=provider or self.settings.provider,
+                    fallback_provider=(
+                        fallback_provider or self.settings.effective_fallback_provider()
+                    ),
                     user_glossary=user_glossary,
                     retry_failed=retry_failed,
                     allow_provider_switch=allow_provider_switch,
@@ -1668,6 +1703,7 @@ class Orchestrator:
         bound: _Bound,
         *,
         provider: str,
+        fallback_provider: Optional[str],
         user_glossary: Optional[Path],
         retry_failed: bool,
         allow_provider_switch: bool,
@@ -1699,7 +1735,29 @@ class Orchestrator:
             return made
         translator = made.value
         try:
+            # ``provider_name`` stays the *primary*: it is the job's identity (the
+            # --allow-provider-switch check below and jobs.provider). Enabling the
+            # fallback must not look like a provider switch.
             provider_name = translator.name
+            if fallback_provider is not None and fallback_provider == provider_name:
+                warnings.append(f"fallback_provider_ignored:{fallback_provider}")
+                log.warning(
+                    "--fallback-provider %s is the primary provider; no fallback armed",
+                    fallback_provider,
+                    extra={"event": "provider_fallback_ignored"},
+                )
+            elif fallback_provider is not None:
+                wrapped = self._wrap_with_fallback(translator, fallback_provider)
+                if isinstance(wrapped, Err):
+                    return wrapped
+                translator = wrapped.value
+                warnings.append(f"provider_fallback_armed:{provider_name}->{fallback_provider}")
+                log.info(
+                    "automatic fallback armed: %s -> %s on an exhausted quota",
+                    provider_name,
+                    fallback_provider,
+                    extra={"event": "provider_fallback_armed"},
+                )
             if job.provider and job.provider != provider_name:
                 if not allow_provider_switch:
                     return err(
@@ -1938,18 +1996,41 @@ class Orchestrator:
             self._finish_run(bound, outcome)
             self._write_summary(summary)
             log.info(
-                "run finished: %s (exit %d) completed=%d failed=%d chars_sent=%d",
+                "run finished: %s (exit %d) completed=%d failed=%d chars_sent=%d by %s",
                 outcome.outcome,
                 exit_code,
                 ctx.stats.completed,
                 ctx.stats.failed,
                 ctx.stats.chars_sent,
+                describe_provider_units(ctx.provider_units) or provider_name,
                 extra={"event": "run_finished", "chars": ctx.stats.chars_sent},
             )
             return Ok(summary)
         finally:
             with suppress(Exception):
                 await translator.aclose()
+
+    def _wrap_with_fallback(
+        self, primary: BaseTranslator, secondary_name: str
+    ) -> Result[BaseTranslator]:
+        """Compose ``FallbackTranslator(primary, secondary)`` (5.3, user decision Q-fb).
+
+        The secondary is built through the same factory as the primary, so it goes
+        through its own fail-fast ``create`` (key present, packages installed) *before*
+        the run starts: discovering at the moment the quota dies that the fallback cannot
+        be constructed either would be the worst possible time.
+        """
+        made = self._translator_factory(secondary_name, self.settings)
+        if isinstance(made, Err):
+            error = made.error
+            return err(
+                error.code,
+                f"--fallback-provider {secondary_name}: {error.message}",
+                ErrorScope.USER,
+                context=dict(error.context),
+                cause=error.cause,
+            )
+        return Ok(FallbackTranslator(primary, made.value))
 
     def _warn_glossary_changed(
         self,
@@ -2276,6 +2357,9 @@ class Orchestrator:
         totals = repo.totals(job.id)
         failed_ids = repo.failed_ids(job.id)
         review_ids = repo.review_ids(job.id)
+        # Job-wide, read back from the ``provider`` column, so a resumed job keeps the
+        # units an earlier run's fallback translated.
+        providers = repo.provider_counts(job.id)
         finished_at = self._clock()
         overlay: Optional[OverlaySummary] = None
         if mode == MODE_OVERLAY and isinstance(repo, OverlayBlockRepository):
@@ -2306,6 +2390,7 @@ class Orchestrator:
             figures=self._figure_totals(),
             mode=mode,
             overlay=overlay,
+            provider_units=providers.value if isinstance(providers, Ok) else {},
         )
 
     def _write_summary(self, summary: JobSummary) -> Optional[Path]:
@@ -2549,7 +2634,7 @@ class Orchestrator:
                             adapter.unit_id(unit),
                             verbatim_result(
                                 adapter.unit_id(unit), adapter.source_text(unit),
-                                ctx.translator.name,
+                                active_provider_of(ctx.translator),
                             ),
                         )
                 if not todo:
@@ -2653,7 +2738,7 @@ class Orchestrator:
         if isinstance(built, Err):
             return built
         batch = built.value
-        provider_name = ctx.translator.name
+        provider_name = active_provider_of(ctx.translator)
         strategy = ctx.binding.strategy if ctx.binding is not None else GlossaryStrategy.NONE
         finish_ctx = FinishContext(
             provider=provider_name,
@@ -2712,8 +2797,18 @@ class Orchestrator:
                     "chars": batch.chars,
                 },
             )
-        finish_ctx = dataclasses.replace(finish_ctx, latency_ms=latency_ms)
-        results = adapter.finish(batch, response.value, finish_ctx)
+        answer = response.value
+        extra_warnings: Tuple[str, ...] = ()
+        if isinstance(answer, FallbackResponse):
+            # The wrapper may have switched mid-run: the unit belongs to whoever answered.
+            provider_name = answer.provider or provider_name
+            extra_warnings = answer.warnings
+        finish_ctx = dataclasses.replace(
+            finish_ctx, latency_ms=latency_ms, provider=provider_name
+        )
+        results = adapter.finish(batch, answer, finish_ctx)
+        if extra_warnings:
+            results = [_with_warnings(r, extra_warnings) for r in results]
         for result in results:
             if isinstance(result, Ok) and result.value.review_flag and any(
                 w.startswith(("empty_response", "truncated_response", "provider_empty"))
@@ -2742,6 +2837,7 @@ class Orchestrator:
             return
         ctx.stats.completed += 1
         ctx.stats.chars_sent += result.chars_sent
+        ctx.provider_units[result.provider] = ctx.provider_units.get(result.provider, 0) + 1
         log.info(
             "chunk completed",
             extra={
@@ -3953,6 +4049,13 @@ class Orchestrator:
                     if isinstance(recovered, Ok):
                         run_info["chunks_completed"], run_info["chunks_failed"] = recovered.value
                     warnings.append(f"last run {run.id} did not finish cleanly")
+            # Units per provider: from the pass the last run worked on (same rule as
+            # CR-42 above), so a fallback run shows "deepl 61, google 12".
+            unit_repo: UnitRepository[Any] = chunks
+            if mode == MODE_OVERLAY and db.schema_version >= 2:
+                unit_repo = self._overlay_repo_factory(db, self.run_id, job.glossary_hash)
+            counted_providers = unit_repo.provider_counts(job.id)
+            provider_units = counted_providers.value if isinstance(counted_providers, Ok) else {}
             return Ok(
                 StatusReport(
                     state_path=str(db_path),
@@ -3979,6 +4082,7 @@ class Orchestrator:
                     figures=self._figure_totals(),
                     overlay=self._overlay_status(db, job, now),
                     mode=mode,
+                    provider_units=provider_units,
                 )
             )
         finally:
@@ -4015,6 +4119,7 @@ class Orchestrator:
         min_chars_per_page: int = 50,
         min_count: int = 3,
         provider: Optional[str] = None,
+        fallback_provider: Optional[str] = None,
         user_glossary: Optional[Path] = None,
         retry_failed: bool = False,
         allow_provider_switch: bool = False,
@@ -4074,6 +4179,7 @@ class Orchestrator:
             translated = await self.translate(
                 input_pdf,
                 provider=provider,
+                fallback_provider=fallback_provider,
                 user_glossary=user_glossary,
                 retry_failed=retry_failed,
                 allow_provider_switch=allow_provider_switch,

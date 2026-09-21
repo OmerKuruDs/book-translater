@@ -93,9 +93,14 @@ class BaseTranslator(ABC):
 def _registry() -> Dict[str, Type[BaseTranslator]]:
     # Imported lazily: the concrete modules import this one.
     from .deepl_translator import DeepLTranslator
+    from .google_translate import GoogleTranslator
     from .local_nmt import LocalNMTTranslator
 
-    return {DeepLTranslator.name: DeepLTranslator, LocalNMTTranslator.name: LocalNMTTranslator}
+    return {
+        DeepLTranslator.name: DeepLTranslator,
+        GoogleTranslator.name: GoogleTranslator,
+        LocalNMTTranslator.name: LocalNMTTranslator,
+    }
 
 
 def list_translators() -> List[str]:

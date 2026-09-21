@@ -1,31 +1,45 @@
 """Runtime settings (design doc 02, section 9.4).
 
 Precedence: CLI flag > process environment > ``.env`` in the current directory
-> defaults. ``DEEPL_API_KEY`` / ``DEEPL_SERVER_URL`` are read without the
-``BOOK_TRANSLATOR_`` prefix; everything else carries it.
+> defaults. ``DEEPL_API_KEY`` / ``DEEPL_SERVER_URL`` / ``GOOGLE_CLOUD_API`` are read
+without the ``BOOK_TRANSLATOR_`` prefix; everything else carries it.
 
-The DeepL key is a ``SecretStr``: it is never printed by ``repr`` and must never
-be logged or persisted.
+Every provider credential is a ``SecretStr``: it is never printed by ``repr`` and must
+never be logged or persisted (CR-01).
 """
 
 from __future__ import annotations
 
 import re
 from pathlib import Path
-from typing import FrozenSet, List, Literal, Optional, Set, Tuple
+from typing import Dict, FrozenSet, List, Literal, Optional, Set, Tuple, cast
 
-from pydantic import Field, SecretStr, ValidationError, field_validator
+from pydantic import Field, SecretStr, ValidationError, ValidationInfo, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from .domain.result import Err, ErrorCode, ErrorScope, Ok, Result, err
 
-ProviderName = Literal["deepl", "local"]
+ProviderName = Literal["deepl", "local", "google"]
+_PROVIDER_NAMES: Tuple[str, ...] = ("deepl", "local", "google")
+_AUTO_FALLBACK_ORDER: Tuple[ProviderName, ...] = ("google", "deepl")
+"""Order an automatic fallback is picked from: a hosted provider whose key is configured.
+``local`` is never chosen automatically - it needs a downloaded model and changes the
+output quality far more than a second hosted engine does."""
 ExtractorName = Literal["pymupdf", "marker"]
 LogLevel = Literal["DEBUG", "INFO", "WARNING", "ERROR"]
 PdfEngine = Literal["native", "weasyprint"]
 
 SOURCE_PAGE_SIZE = "source"
 """``--pdf-page-size`` / ``--pdf-margin`` value meaning "as in the source PDF" (Addendum A)."""
+
+PROVIDER_KEY_ENV: Dict[str, str] = {"deepl": "DEEPL_API_KEY", "google": "GOOGLE_CLOUD_API"}
+"""Credential each provider needs; ``local`` needs none (it runs offline)."""
+
+
+_ENV_OF_FIELD: Dict[str, str] = {
+    "deepl_api_key": "DEEPL_API_KEY",
+    "google_cloud_api": "GOOGLE_CLOUD_API",
+}
 
 
 class Settings(BaseSettings):
@@ -41,8 +55,19 @@ class Settings(BaseSettings):
 
     deepl_api_key: Optional[SecretStr] = Field(default=None, validation_alias="DEEPL_API_KEY")
     deepl_server_url: Optional[str] = Field(default=None, validation_alias="DEEPL_SERVER_URL")
+    # Google Cloud Translation v2 (Basic) browser/server API key ("AIza..."); the v3
+    # endpoint would need a service account, so v2 is what the REST provider calls.
+    google_cloud_api: Optional[SecretStr] = Field(
+        default=None, validation_alias="GOOGLE_CLOUD_API"
+    )
 
     provider: ProviderName = "deepl"
+    fallback_provider: Optional[str] = None
+    """Provider to continue with when the primary runs out of quota mid-run.
+
+    Unset means *automatic*: :meth:`effective_fallback_provider` picks a provider whose
+    key is configured, so a run does not stop halfway through a book just because the
+    primary's quota died. ``"none"`` turns that off explicitly."""
     extractor: ExtractorName = "pymupdf"
     concurrency: int = Field(default=4, ge=1, le=64)
     max_retries: int = Field(default=5, ge=0, le=50)
@@ -78,15 +103,28 @@ class Settings(BaseSettings):
     pdf_page_size: str = Field(default=SOURCE_PAGE_SIZE, min_length=1)
     pdf_margin: str = SOURCE_PAGE_SIZE  # "source" or 1, 2 or 4 CSS-style values (mm / pt)
 
-    @field_validator("deepl_api_key")
+    @field_validator("deepl_api_key", "google_cloud_api")
     @classmethod
-    def _key_shape(cls, value: Optional[SecretStr]) -> Optional[SecretStr]:
+    def _key_shape(cls, value: Optional[SecretStr], info: ValidationInfo) -> Optional[SecretStr]:
+        """Shape check only: the name of the variable is reported, never its value."""
         if value is None:
             return None
+        env = _ENV_OF_FIELD.get(info.field_name or "", info.field_name or "the API key")
         raw = value.get_secret_value().strip()
         if not raw or any(ch.isspace() for ch in raw):
-            raise ValueError("DEEPL_API_KEY must be non-empty and contain no whitespace")
+            raise ValueError(f"{env} must be non-empty and contain no whitespace")
         return SecretStr(raw)
+
+    def missing_provider_key(self, provider: str) -> Optional[str]:
+        """Name of the credential ``provider`` needs but does not have (``None`` if fine)."""
+        env = PROVIDER_KEY_ENV.get(provider)
+        if env is None:
+            return None
+        present = {
+            "DEEPL_API_KEY": self.deepl_api_key,
+            "GOOGLE_CLOUD_API": self.google_cloud_api,
+        }[env]
+        return None if present is not None else env
 
     def validate_for_provider(self) -> Result[None]:
         """Fail-fast checks that need no network (AC US-9/1, US-9/2)."""
@@ -99,10 +137,58 @@ class Settings(BaseSettings):
                 "BOOK_TRANSLATOR_CHUNK_MIN must be <= BOOK_TRANSLATOR_CHUNK_MAX",
                 ErrorScope.USER,
             )
-        if self.provider == "deepl" and self.deepl_api_key is None:
+        missing = self.missing_provider_key(self.provider)
+        if missing is not None:
             return err(
                 ErrorCode.PROVIDER_CONFIG,
-                "DEEPL_API_KEY is not set (environment variable or .env)",
+                f"{missing} is not set (environment variable or .env)",
+                ErrorScope.USER,
+            )
+        return self.validate_fallback_provider()
+
+    def effective_fallback_provider(self) -> Optional[ProviderName]:
+        """The provider a run falls back to, or ``None``.
+
+        Automatic unless switched off: a run that dies halfway through a book because the
+        primary's quota ran out is the thing this exists to prevent. A fallback is only
+        offered when its key is actually configured, so a user with one provider sees no
+        change and gets no error. ``fallback_provider="none"`` disables it.
+        """
+        chosen = self.fallback_provider
+        if chosen == "none":
+            return None
+        if chosen is not None:
+            return cast(ProviderName, chosen)
+        for candidate in _AUTO_FALLBACK_ORDER:
+            if candidate != self.provider and self.missing_provider_key(candidate) is None:
+                return candidate
+        return None
+
+    def validate_fallback_provider(self) -> Result[None]:
+        """An explicit ``--fallback-provider`` must name a *different*, usable provider."""
+        fallback = self.fallback_provider
+        if fallback is None or fallback == "none":
+            return Ok(None)
+        if fallback not in _PROVIDER_NAMES:
+            return err(
+                ErrorCode.PROVIDER_CONFIG,
+                f"unknown --fallback-provider {fallback!r}; "
+                f"choose one of {', '.join(_PROVIDER_NAMES)} or 'none'",
+                ErrorScope.USER,
+            )
+        if fallback == self.provider:
+            return err(
+                ErrorCode.PROVIDER_CONFIG,
+                f"--fallback-provider {fallback} is also the primary provider; "
+                "choose a different one or drop the flag",
+                ErrorScope.USER,
+            )
+        missing = self.missing_provider_key(fallback)
+        if missing is not None:
+            return err(
+                ErrorCode.PROVIDER_CONFIG,
+                f"{missing} is not set (environment variable or .env); it is needed by "
+                f"--fallback-provider {fallback}",
                 ErrorScope.USER,
             )
         return Ok(None)
