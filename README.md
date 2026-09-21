@@ -146,11 +146,19 @@ It is an optional extra and the CLI does not depend on it. The interface text is
 
 ```
 pip install -e ".[web]"
-python -m book_translator.web                 # http://127.0.0.1:8765
+book-translator web                           # http://127.0.0.1:8765
 ```
 
-`python -m book_translator.web --host --port --work-root --glossaries` overrides the
-defaults; `uvicorn book_translator.web.app:app --host 127.0.0.1 --port 8765` works too.
+On Windows `web.bat` in the repository root does the same by double-click: it runs the
+interpreter inside `.venv` directly, so nothing has to be activated first.
+
+`python -m book_translator.web` is the same server, but it only resolves when the virtual
+environment is active - a plain `python -m book_translator.web` in a fresh shell reports
+`No module named 'book_translator'` because it reaches the system interpreter. The console
+script has no such trap: it always runs the interpreter it was installed into.
+
+`--host --port --work-root --glossaries` override the defaults on either spelling;
+`uvicorn book_translator.web.app:app --host 127.0.0.1 --port 8765` works too.
 Settings (`DEEPL_API_KEY`, chunk sizes, page design, …) come from the environment and the
 `.env` file of the directory you start the server in, exactly as they do for the CLI.
 

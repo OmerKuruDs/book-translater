@@ -334,6 +334,15 @@ FALLBACK_PROVIDER_OPTION = typer.Option(
     show_default="automatic",
     case_sensitive=False,
 )
+WEB_HOST_OPTION = typer.Option("127.0.0.1", "--host", help="Address to listen on.")
+WEB_PORT_OPTION = typer.Option(8765, "--port", help="Port to listen on.")
+WEB_WORK_ROOT_OPTION = typer.Option(
+    None, "--work-root", help="Root of the per-job directories (default: ./web-jobs)."
+)
+WEB_GLOSSARIES_OPTION = typer.Option(
+    None, "--glossaries", help="Glossary directory (default: ./glossaries)."
+)
+
 REQUIRE_GLOSSARY_OPTION = typer.Option(
     False, "--require-glossary", help="Refuse to start with 0 approved glossary terms."
 )
@@ -1517,3 +1526,33 @@ def main() -> None:
 
 if __name__ == "__main__":  # pragma: no cover
     main()
+
+
+@app.command()
+def web(
+    host: str = WEB_HOST_OPTION,
+    port: int = WEB_PORT_OPTION,
+    work_root: Optional[Path] = WEB_WORK_ROOT_OPTION,
+    glossaries: Optional[Path] = WEB_GLOSSARIES_OPTION,
+) -> None:
+    """Start the local web UI: upload a PDF, translate it, download the result.
+
+    The same server as ``python -m book_translator.web``. This spelling exists because
+    the module form only resolves once the virtual environment is active, which is easy
+    to miss - the console script always runs the interpreter it was installed into.
+    """
+    argv: List[str] = ["--host", host, "--port", str(port)]
+    if work_root is not None:
+        argv += ["--work-root", str(work_root)]
+    if glossaries is not None:
+        argv += ["--glossaries", str(glossaries)]
+    try:
+        from .web.__main__ import main as web_main
+    except ImportError as exc:  # the [web] extra is not installed
+        typer.echo(
+            'the web UI needs its optional dependencies: pip install -e ".[web]"'
+            f" ({exc.__class__.__name__}: {exc})",
+            err=True,
+        )
+        raise typer.Exit(code=EXIT_FAILURE) from exc
+    raise typer.Exit(code=web_main(argv))

@@ -31,7 +31,11 @@ DOMAIN_EXTERNAL: Set[str] = {"pydantic", "__future__"}
 
 ALLOWED_LAYERS: Dict[str, Set[str]] = {
     "root": set(),
-    "cli": {"config", "logging_setup", "pipeline", "domain"},
+    # The CLI is the package's composition root: it is the one place allowed to start
+    # the other front end, so ``book-translator web`` can exist. The import is lazy and
+    # lives inside that command, which keeps the optional [web] dependencies optional.
+    # Nothing flows back: ``web`` must not import ``cli``.
+    "cli": {"config", "logging_setup", "pipeline", "domain", "web"},
     "web": {"config", "logging_setup", "pipeline", "domain"},
     "config": {"domain"},
     "logging_setup": set(),
@@ -163,3 +167,15 @@ def test_checker_recognises_the_forbidden_edges() -> None:
     assert violation(f"{PACKAGE}.pdfkit.api", f"{PACKAGE}.domain.models.Chunk")
     assert violation(f"{PACKAGE}.exporters.pdf_overlay_exporter", f"{PACKAGE}.extractors.cleanup.x")
     assert violation(f"{PACKAGE}.database.repository", f"{PACKAGE}.extractors.figure_inventory.x")
+
+
+def test_the_front_ends_do_not_depend_on_each_other_both_ways() -> None:
+    """``cli`` may start ``web`` (composition root); ``web`` may not reach back.
+
+    Without this the allowance added for ``book-translator web`` would quietly permit a
+    cycle between the two front ends."""
+    assert "web" in ALLOWED_LAYERS["cli"]
+    assert "cli" not in ALLOWED_LAYERS["web"]
+    for layer, allowed in ALLOWED_LAYERS.items():
+        if layer != "cli":
+            assert "cli" not in allowed, f"{layer} must not import the CLI"
