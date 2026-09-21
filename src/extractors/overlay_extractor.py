@@ -8,7 +8,12 @@ rect gives way to kept units only, so no source glyph is left beside a translati
 Kinds, styles, alignment and the translate decision are pure functions of ``cleanup.py``;
 this module only reads the PDF (through ``pdfkit.api``) and assembles the value objects.
 
-Display (block) mathematics is the one thing that is *not* grouped that way: the rows
+Two things are *not* grouped that way. A dot-leader row of a table of contents
+("8.1 Pairwise alignment . . . 403") is a record per *row*, so its fragments never group
+with the rows above and below - otherwise the right-hand column of page numbers becomes
+one unit down the page and the headings of three rows land in a fourth.
+
+Display (block) mathematics is the other: the rows
 of an equation are collected into a band that becomes a single kept unit
 (``keep_reason="math"``), grouping never runs through a band and no translated rect is
 allowed to reach into one - otherwise the redaction of the paragraph around an equation
@@ -147,6 +152,16 @@ _MATH_BAND_GAP_LINES = 0.6
 """Vertical gap (in body line heights) that still fuses two math line clusters into one
 band: enough for the stacked rows of one display equation, which touch or overlap, and too
 little to jump over a line of prose between two equations."""
+
+LEADER_DOTS_RE = re.compile(r"\.(?:[ \t\u00a0]*\.){3,}")
+"""The dot leader of a table-of-contents row: four or more dots in a run, with nothing but
+blanks between them (``"...."`` and ``". . . ."`` alike, the two ways a typesetter fills
+the gap between a heading and its page number).
+
+Four is the floor on purpose: an ellipsis inside a sentence ("wait ... then act") is three
+dots and must not turn a paragraph row into a leader row. The counterpart of an ellipsis
+set as a single ``…`` glyph never matches at all, which is the safe side of the rule -
+a page it appears on keeps the ordinary paragraph grouping."""
 
 
 @dataclass(frozen=True)
@@ -426,6 +441,46 @@ def _row_boxes(lines: Sequence[Line]) -> List[BBox]:
             rows.append(line.bbox)
         last = line
     return rows
+
+
+def _text_rows(lines: Sequence[Line]) -> List[List[Line]]:
+    """``lines`` cut into text rows: the fragments that share one baseline, in reading
+    order. Membership is measured against the *first* line of the row (never the previous
+    one), so a row cannot drift down the page one fragment at a time."""
+    rows: List[List[Line]] = []
+    for line in sorted(lines, key=lambda ln: (round(ln.bbox[1], 3), round(ln.bbox[0], 3))):
+        if rows and abs(line.bbox[1] - rows[-1][0].bbox[1]) <= _ROW_TOLERANCE * max(
+            rows[-1][0].height, line.height, 1.0
+        ):
+            rows[-1].append(line)
+        else:
+            rows.append([line])
+    return rows
+
+
+def _split_leader_rows(lines: Sequence[Line]) -> Tuple[List[List[Line]], List[Line]]:
+    """Separate the dot-leader (table of contents) rows from the rest of the page.
+
+    On a contents page every *row* is one record - ``8.1 | Pairwise alignment . . . | 403``
+    - while the ordinary grouping reads a page as prose and runs down the columns: the
+    right-hand column of page numbers then becomes one unit spanning the whole page, and
+    the headings of three rows land in a fourth. So a row holding a dot leader
+    (:data:`LEADER_DOTS_RE`) is taken out of vertical grouping altogether: its fragments
+    are handed on as one group each, and only :func:`_merge_row_groups` (same row, run-in
+    gap) is left to put a number back together with the heading beside it.
+
+    Returns ``(groups, rest)``: the one-line groups of the leader rows, and the lines that
+    go on to ordinary grouping. Rows without a leader are untouched, so a contents page's
+    chapter title and the footer of a page that merely quotes "...." keep their grouping.
+    """
+    groups: List[List[Line]] = []
+    rest: List[Line] = []
+    for row in _text_rows(lines):
+        if any(LEADER_DOTS_RE.search(ln.text) for ln in row):
+            groups.extend([line] for line in row)
+        else:
+            rest.extend(row)
+    return groups, rest
 
 
 def _smallest_drawing_around(raw: RawPage, bbox: BBox) -> Optional[BBox]:
@@ -867,6 +922,12 @@ def _build_units(
     for index in sorted(by_cell):
         add(make(sorted(by_cell[index], key=lambda ln: (ln.bbox[1], ln.bbox[0])), cells[index]),
             False, True)
+    # Dot-leader rows next, before the math bands: a contents row is one record per row and
+    # must not be grouped down the columns. Taking them out first also keeps them out of the
+    # band search, which reads a page as prose exactly like the grouping does.
+    leader_groups, free = _split_leader_rows(free)
+    for group in _merge_row_groups(leader_groups, raw, ctx):
+        add(make(group), False, False)
     # Display math bands next: one kept unit each, and the lines they leave behind are
     # grouped per segment so that no translated paragraph box ever spans a band.
     # a band reaching into a table cell would fight the cell for the same rows; the cell

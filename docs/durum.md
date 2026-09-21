@@ -257,3 +257,19 @@ Orkestratör `tests/test_migration.py`'de hatalı metin dilimlemesiyle dosyanın
 Terim tutma (İngilizce kalan / Türkçeye çevrilen): computer vision 10/0 · homography 15/0 · bundle adjustment 9/0 · image stitching 28/1 · image alignment 16/5 · feature matching 3/1 · optical flow 0/3 (kaçan). Sözlüksüz koşuda bu sayılar tersineydi.
 
 Doğrulama: 752 test / 1 skip, mypy strict 60 dosya, ruff temiz.
+
+## İçindekiler sayfaları dağılıyordu (2026-09-21) — nokta dizili satır kuralı
+
+`docs/test2_final/translated_book.overlay.pdf` sayfa 16'da (kitap s.401, "Chapter 8" bölüm içindekileri) numaralar başlıklarından kopmuş, başlıklar sağdaki sayfa numaralarıyla hizasını kaybetmişti.
+
+**Kök neden:** birim kurucu satırları **sütun boyunca dikey** grupluyordu (düzyazı paragrafı varsayımı), oysa içindekilerde her **satır** bir kayıttır. Ölçülen gerçek birimler: `#242` = `'403 403 405 406 408 …'` (tüm sayfa-numarası sütunu tek birim, y 194→515), `#257` = `'Blending Additional reading Exercises'`, `#259` = `'8.5 8.6'`. `find_tables` bunu yakalayamıyor — nokta dizili içindekilerde çizgi yok.
+
+**Çözüm — `src/extractors/overlay_extractor.py`:** şekil bölgeleri ve tablo hücreleriyle aynı kalıpta yeni bir katman. `LEADER_DOTS_RE` (arada yalnız boşluk olan 4+ nokta; üç noktalı elips kasıtlı olarak eşleşmez) bir **metin satırında** geçiyorsa, `_split_leader_rows` o satırın tüm parçalarını dikey gruplamadan çıkarır ve her parçayı tek satırlık grup olarak verir; aynı satırı birleştiren tek şey `_merge_row_groups` (run-in) kalır. Katman tablo hücrelerinden **sonra**, matematik bandından **önce** çalışır — bant araması da sayfayı düzyazı gibi okuduğu için. Nokta dizisi olmayan satırlar (bölüm başlığı, altbilgi) hiç etkilenmez. `extract` (reflow) yolu değişmedi.
+
+**Ölçüm (`docs/test-2.pdf`):** 794 → 822 birim, 556 → 571 çevrilecek. Sayfa sayfa karşılaştırıldı: **yalnız s.16 değişti** (24 → 52 birim, 12 → 27 çevrilecek), diğer 47 sayfa birebir aynı. `docs/test_doc.pdf` 43/34 ile değişmedi. Boyanan birimler arası çakışma her iki belgede de 0.
+
+**Gözle doğrulama:** DeepL kotası bu dönem tükendiği için (HTTP 456) canlı koşu yapılamadı; s.16 elle yazılmış Türkçe ile `OverlayRenderer` üzerinden basıldı (27 birim yerleşti, could_not_fit 0) ve 120 dpi'da kaynakla karşılaştırıldı. Her numara başlığıyla aynı satırda, sağdaki sayfa numaraları hizada, alt başlık girintileri korunmuş. Kalan kozmetik iz: nokta dizisi çevrilen metnin uzunluğuna göre yeniden dizildiği için sağdaki sayfa numarasına kadar uzanmıyor; ayrı parça olarak gelen nokta dizileri de kaynaktaki yerinde kalıyor (başlıkla dizi arasında boşluk).
+
+**Testler:** `tests/test_overlay_extractor.py` — sentetik içindekiler sayfası (satır başına bir kayıt), nokta dizisiz paragraf sayfası (regresyon koruması), cümle içi elips leader sayılmıyor, gerçek belge s.16'da hiçbir birim iki satırı kapsamıyor.
+
+Doğrulama: 756 test / 1 skip, mypy strict 60 dosya, ruff temiz.

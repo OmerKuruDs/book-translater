@@ -1138,3 +1138,109 @@ def test_a_document_without_math_fonts_has_no_bands(test_doc: OverlayExtraction)
     assert not [b for b in test_doc.blocks if b.keep_reason == "math"]
     assert len(test_doc.blocks) == 43
     assert sum(1 for b in test_doc.blocks if b.translate) == 34
+
+
+# ---------------------------------------------------------------------------
+# Dot-leader (table of contents) rows: one record per row, never down the columns
+# ---------------------------------------------------------------------------
+
+
+def _toc_row(number: str, title: str, page: str, y0: float) -> List[Line]:
+    """One contents row as the PDF reports it: three fragments on one baseline, the middle
+    one carrying the dot leader (docs/test-2.pdf p.16, Szeliski p.401)."""
+    return [
+        _prose_line(number, 73.1, y0, 86.4),
+        _prose_line(f"{title} " + ". " * 20, 97.5, y0, 452.6),
+        _prose_line(page, 463.3, y0, 479.2),
+    ]
+
+
+def test_contents_rows_are_one_unit_per_row() -> None:
+    """The bug: grouping runs down the columns, so the whole page-number column became one
+    unit and three headings landed in another. Every row is its own record instead."""
+    lines = [
+        line
+        for index, (number, title, page) in enumerate(
+            [
+                ("8.1", "Pairwise alignment", "403"),
+                ("8.2", "Image stitching", "411"),
+                ("8.3", "Global alignment", "421"),
+                ("8.4", "Compositing", "426"),
+                ("8.5", "Additional reading", "437"),
+            ]
+        )
+        for line in _toc_row(number, title, page, 194.8 + index * 13.4)
+    ]
+    units = _units_of(lines)
+    # the number joins the heading beside it (same row, run-in gap); the page number does not
+    headings = [u for u in units if has_letters(u.text)]
+    assert [u.text.split(" .")[0] for u in headings] == [
+        "8.1 Pairwise alignment",
+        "8.2 Image stitching",
+        "8.3 Global alignment",
+        "8.4 Compositing",
+        "8.5 Additional reading",
+    ]
+    numbers = [u for u in units if not has_letters(u.text)]
+    assert [u.text for u in numbers] == ["403", "411", "421", "426", "437"]
+    # nothing spans two rows: every unit is one line tall, and no page number stacked up
+    for unit in units:
+        assert len(unit.lines) == 1 or {round(ln.bbox[1], 3) for ln in unit.lines} == {
+            round(unit.lines[0].bbox[1], 3)
+        }, unit.text
+        assert unit.bbox[3] - unit.bbox[1] < 13.4, unit.text
+
+
+def test_a_paragraph_page_is_not_touched_by_the_leader_rule() -> None:
+    """Regression guard: no dot leader on the page -> the ordinary vertical grouping, so a
+    paragraph is still one unit."""
+    lines = [
+        _prose_line("The alignment of two images is estimated from the", 73.1, 194.8, 452.6),
+        _prose_line("correspondences between them, which the matcher", 73.1, 208.2, 452.6),
+        _prose_line("produces from the detected feature points.", 73.1, 221.6, 400.0),
+    ]
+    (unit,) = _units_of(lines)
+    assert len(unit.lines) == 3 and unit.keep_reason is None
+    assert unit.text.startswith("The alignment") and unit.text.endswith("points.")
+
+
+def test_an_ellipsis_inside_a_sentence_is_no_leader() -> None:
+    """Three dots are an ellipsis, not a leader: the paragraph keeps its grouping. Four in
+    a row are a leader, which is the line the constant draws."""
+    from book_translator.extractors.overlay_extractor import LEADER_DOTS_RE
+
+    assert not LEADER_DOTS_RE.search("we wait ... and then act")
+    assert not LEADER_DOTS_RE.search("the ratio is 8.1.2 on that page")
+    assert LEADER_DOTS_RE.search("Pairwise alignment . . . . 403")
+    assert LEADER_DOTS_RE.search("Pairwise alignment....403")
+    lines = [
+        _prose_line("The matcher keeps the best hypothesis ... and then", 73.1, 194.8, 452.6),
+        _prose_line("refines it over the remaining correspondences.", 73.1, 208.2, 420.0),
+    ]
+    (unit,) = _units_of(lines)
+    assert len(unit.lines) == 2
+
+
+def test_contents_page_of_the_real_document(math_doc: OverlayExtraction) -> None:
+    """docs/test-2.pdf p.16 (Szeliski p.401): no unit spans two contents rows.
+
+    Before the leader rule this page held ``'403 403 405 406 ...'`` (the whole right-hand
+    column as one unit, 321 pt tall), ``'Blending Additional reading Exercises'`` and
+    ``'8.5 8.6'``. Every contents unit is one text row now."""
+    blocks = _page(math_doc, 16)
+    contents = [b for b in blocks if 190.0 <= b.bbox[1] <= 520.0]
+    assert len(contents) == 48  # 24 rows, two units each: the heading and its page number
+    for block in contents:
+        assert block.bbox[3] - block.bbox[1] <= 13.4, block.source_text
+        # a unit may hold several fragments, but never two of them from different rows
+        assert len({round(box[1], 3) for box in block.line_boxes}) == 1, block.source_text
+    stacked = [b for b in blocks if b.source_text.startswith("403 403")]
+    assert not stacked
+    assert not [b for b in blocks if b.source_text == "8.5 8.6"]
+    assert not [b for b in blocks if b.source_text.startswith("Blending Additional reading")]
+    headings = [b for b in contents if b.translate]
+    assert _by_text(headings, "8.1 Pairwise").source_text.startswith("8.1 Pairwise alignment .")
+    assert _by_text(headings, "8.6 Exercises").source_text == "8.6 Exercises"
+    # the page numbers stay in their own column, kept and aligned at the right margin
+    kept = [b for b in contents if not b.translate]
+    assert all(b.bbox[2] >= 452.0 for b in kept)
