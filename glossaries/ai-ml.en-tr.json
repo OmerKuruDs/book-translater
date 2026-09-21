@@ -2,9 +2,24 @@
   "version": 1,
   "source_lang": "en",
   "target_lang": "tr",
-  "generated_at": "2026-09-21T10:24:22.965009Z",
-  "_about": "Terms kept in English on purpose: each source maps to itself. Curated union of a hand-written computer-vision list and the term names of Google's Machine Learning Glossary (developers.google.com/machine-learning/glossary), which is published under CC BY 4.0. Single generic words were dropped on purpose - keeping words like 'cost', 'depth' or 'baseline' in English damages ordinary prose.",
+  "generated_at": "2026-09-21T11:35:21.979520Z",
+  "_about": "Terms kept in English on purpose: each source maps to itself. Curated union of a hand-written computer-vision list and the term names of Google's Machine Learning Glossary (developers.google.com/machine-learning/glossary), which is published under CC BY 4.0. Single generic words were dropped on purpose - keeping words like 'cost', 'depth' or 'baseline' in English damages ordinary prose. A third group (note \"user-xlsx\") comes from a hand-made spreadsheet and prescribes a Turkish wording instead of keeping the term in English; where the two disagreed, the English-keeping entry won.",
   "entries": [
+    {
+      "source": "2D Projection",
+      "target": "2B İzdüşüm",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "3D Motion",
+      "target": "3B Hareket",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "3D Point",
+      "target": "3B Nokta",
+      "note": "user-xlsx"
+    },
     {
       "source": "A/B testing",
       "target": "A/B testing",
@@ -101,6 +116,11 @@
       "note": "task"
     },
     {
+      "source": "Aperture",
+      "target": "Diyafram Açıklığı",
+      "note": "user-xlsx"
+    },
+    {
       "source": "API",
       "target": "API",
       "note": "acronym"
@@ -139,6 +159,11 @@
       "source": "attention mechanism",
       "target": "attention mechanism",
       "note": "architecture"
+    },
+    {
+      "source": "Attention Score",
+      "target": "Attention Skoru",
+      "note": "user-xlsx"
     },
     {
       "source": "attribute sampling",
@@ -241,6 +266,11 @@
       "note": "google-ml-glossary"
     },
     {
+      "source": "Basis Function",
+      "target": "Baz Fonksiyonu",
+      "note": "user-xlsx"
+    },
+    {
       "source": "batch inference",
       "target": "batch inference",
       "note": "engineering"
@@ -254,6 +284,11 @@
       "source": "batch size",
       "target": "batch size",
       "note": "training"
+    },
+    {
+      "source": "Bayes' Rule",
+      "target": "Bayes Kuralı",
+      "note": "user-xlsx"
     },
     {
       "source": "Bayesian neural network",
@@ -341,6 +376,11 @@
       "note": "google-ml-glossary"
     },
     {
+      "source": "Blur",
+      "target": "Bulanıklaştırma",
+      "note": "user-xlsx"
+    },
+    {
       "source": "Boolean Questions (BoolQ)",
       "target": "Boolean Questions (BoolQ)",
       "note": "google-ml-glossary"
@@ -381,9 +421,24 @@
       "note": "google-ml-glossary"
     },
     {
+      "source": "Camera",
+      "target": "Kamera",
+      "note": "user-xlsx"
+    },
+    {
       "source": "camera calibration",
       "target": "camera calibration",
       "note": "task"
+    },
+    {
+      "source": "Camera Coordinates",
+      "target": "Kamera Koordinatları",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Camera Motion",
+      "target": "Kamera Hareketi",
+      "note": "user-xlsx"
     },
     {
       "source": "camera pose",
@@ -436,6 +491,11 @@
       "note": "task"
     },
     {
+      "source": "Channel",
+      "target": "Kanal",
+      "note": "user-xlsx"
+    },
+    {
       "source": "Character N-gram F-score (ChrF)",
       "target": "Character N-gram F-score (ChrF)",
       "note": "google-ml-glossary"
@@ -474,6 +534,11 @@
       "source": "class-imbalanced dataset",
       "target": "class-imbalanced dataset",
       "note": "google-ml-glossary"
+    },
+    {
+      "source": "Classification",
+      "target": "Sınıflandırma",
+      "note": "user-xlsx"
     },
     {
       "source": "classification model",
@@ -531,6 +596,11 @@
       "note": "imaging"
     },
     {
+      "source": "Column",
+      "target": "Sütun",
+      "note": "user-xlsx"
+    },
+    {
       "source": "CommitmentBank (CB)",
       "target": "CommitmentBank (CB)",
       "note": "google-ml-glossary"
@@ -541,6 +611,11 @@
       "note": "google-ml-glossary"
     },
     {
+      "source": "Computational Graph",
+      "target": "Hesaplama Grafiği",
+      "note": "user-xlsx"
+    },
+    {
       "source": "computer vision",
       "target": "computer vision",
       "note": "field"
@@ -549,6 +624,16 @@
       "source": "concept drift",
       "target": "concept drift",
       "note": "google-ml-glossary"
+    },
+    {
+      "source": "Conditional Generation",
+      "target": "Koşullu Üretim",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Conditional Probability",
+      "target": "Koşullu Olasılık",
+      "note": "user-xlsx"
     },
     {
       "source": "confabulation",
@@ -594,6 +679,16 @@
       "source": "continuous feature",
       "target": "continuous feature",
       "note": "google-ml-glossary"
+    },
+    {
+      "source": "Continuous Signal",
+      "target": "Sürekli Sinyal",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Contrast",
+      "target": "Kontrast",
+      "note": "user-xlsx"
     },
     {
       "source": "contrastive learning",
@@ -656,14 +751,34 @@
       "note": "google-ml-glossary"
     },
     {
+      "source": "Coordinate",
+      "target": "Koordinat",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Coordinate System",
+      "target": "Koordinat Sistemi",
+      "note": "user-xlsx"
+    },
+    {
       "source": "COPA",
       "target": "COPA",
       "note": "google-ml-glossary"
     },
     {
+      "source": "Correlation",
+      "target": "Korelasyon",
+      "note": "user-xlsx"
+    },
+    {
       "source": "counterfactual fairness",
       "target": "counterfactual fairness",
       "note": "google-ml-glossary"
+    },
+    {
+      "source": "Covariance",
+      "target": "Kovaryans",
+      "note": "user-xlsx"
     },
     {
       "source": "coverage bias",
@@ -686,9 +801,19 @@
       "note": "architecture"
     },
     {
+      "source": "Cross-Correlation",
+      "target": "Çapraz Korelasyon",
+      "note": "user-xlsx"
+    },
+    {
       "source": "cross-entropy",
       "target": "cross-entropy",
       "note": "training"
+    },
+    {
+      "source": "Cross-Modal",
+      "target": "Modlar Arası",
+      "note": "user-xlsx"
     },
     {
       "source": "cross-validation",
@@ -714,6 +839,11 @@
       "source": "data augmentation",
       "target": "data augmentation",
       "note": "training"
+    },
+    {
+      "source": "Data Bias",
+      "target": "Veri Yanlılığı",
+      "note": "user-xlsx"
     },
     {
       "source": "data labeling",
@@ -826,6 +956,11 @@
       "note": "engineering"
     },
     {
+      "source": "Depth",
+      "target": "Derinlik",
+      "note": "user-xlsx"
+    },
+    {
       "source": "depth estimation",
       "target": "depth estimation",
       "note": "task"
@@ -834,6 +969,11 @@
       "source": "depth map",
       "target": "depth map",
       "note": "geometry"
+    },
+    {
+      "source": "Depth of Field",
+      "target": "Alan Derinliği",
+      "note": "user-xlsx"
     },
     {
       "source": "depthwise separable convolutional neural network (sepCNN)",
@@ -856,6 +996,11 @@
       "note": "architecture"
     },
     {
+      "source": "Dimension",
+      "target": "Boyut",
+      "note": "user-xlsx"
+    },
+    {
       "source": "dimension reduction",
       "target": "dimension reduction",
       "note": "google-ml-glossary"
@@ -869,6 +1014,11 @@
       "source": "discrete feature",
       "target": "discrete feature",
       "note": "google-ml-glossary"
+    },
+    {
+      "source": "Discrete Signal",
+      "target": "Ayrık Sinyal",
+      "note": "user-xlsx"
     },
     {
       "source": "discriminative model",
@@ -946,6 +1096,11 @@
       "note": "google-ml-glossary"
     },
     {
+      "source": "Dynamic Range",
+      "target": "Dinamik Aralık",
+      "note": "user-xlsx"
+    },
+    {
       "source": "eager execution",
       "target": "eager execution",
       "note": "google-ml-glossary"
@@ -959,6 +1114,11 @@
       "source": "earth mover's distance (EMD)",
       "target": "earth mover's distance (EMD)",
       "note": "google-ml-glossary"
+    },
+    {
+      "source": "Edge",
+      "target": "Kenar",
+      "note": "user-xlsx"
     },
     {
       "source": "edge detection",
@@ -979,6 +1139,16 @@
       "source": "EfficientNet",
       "target": "EfficientNet",
       "note": "acronym"
+    },
+    {
+      "source": "Eigenvalue",
+      "target": "Özdeğer",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Eigenvector",
+      "target": "Özvektör",
+      "note": "user-xlsx"
     },
     {
       "source": "Einsum notation",
@@ -1046,6 +1216,11 @@
       "note": "geometry"
     },
     {
+      "source": "Epipolar Line",
+      "target": "Epipolar Doğru",
+      "note": "user-xlsx"
+    },
+    {
       "source": "episodic memory",
       "target": "episodic memory",
       "note": "google-ml-glossary"
@@ -1076,6 +1251,11 @@
       "note": "google-ml-glossary"
     },
     {
+      "source": "Euclidean Distance",
+      "target": "Öklid Uzaklığı",
+      "note": "user-xlsx"
+    },
+    {
       "source": "evals",
       "target": "evals",
       "note": "google-ml-glossary"
@@ -1089,6 +1269,11 @@
       "source": "exact match",
       "target": "exact match",
       "note": "google-ml-glossary"
+    },
+    {
+      "source": "Expectation",
+      "target": "Beklenen Değer",
+      "note": "user-xlsx"
     },
     {
       "source": "experience replay",
@@ -1109,6 +1294,11 @@
       "source": "exploding gradient problem",
       "target": "exploding gradient problem",
       "note": "google-ml-glossary"
+    },
+    {
+      "source": "Exposure",
+      "target": "Pozlama",
+      "note": "user-xlsx"
     },
     {
       "source": "Extreme Summarization (xsum)",
@@ -1191,6 +1381,11 @@
       "note": "acronym"
     },
     {
+      "source": "Feature",
+      "target": "Özellik",
+      "note": "user-xlsx"
+    },
+    {
       "source": "feature cross",
       "target": "feature cross",
       "note": "google-ml-glossary"
@@ -1234,6 +1429,11 @@
       "source": "feature set",
       "target": "feature set",
       "note": "google-ml-glossary"
+    },
+    {
+      "source": "Feature Space",
+      "target": "Özellik Uzayı",
+      "note": "user-xlsx"
     },
     {
       "source": "feature spec",
@@ -1286,6 +1486,16 @@
       "note": "geometry"
     },
     {
+      "source": "Filter",
+      "target": "Filtre",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Filter Bank",
+      "target": "Filtre Bankası",
+      "note": "user-xlsx"
+    },
+    {
       "source": "fine-tuning",
       "target": "fine-tuning",
       "note": "training"
@@ -1306,6 +1516,16 @@
       "note": "google-ml-glossary"
     },
     {
+      "source": "Flow Field",
+      "target": "Akış Alanı",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Focal Length",
+      "target": "Odak Uzaklığı",
+      "note": "user-xlsx"
+    },
+    {
       "source": "focal loss",
       "target": "focal loss",
       "note": "training"
@@ -1316,14 +1536,29 @@
       "note": "google-ml-glossary"
     },
     {
+      "source": "Forward Pass",
+      "target": "İleri Geçiş",
+      "note": "user-xlsx"
+    },
+    {
       "source": "foundation model",
       "target": "foundation model",
       "note": "architecture"
     },
     {
+      "source": "Fourier Transform",
+      "target": "Fourier Dönüşümü",
+      "note": "user-xlsx"
+    },
+    {
       "source": "fraction of successes",
       "target": "fraction of successes",
       "note": "google-ml-glossary"
+    },
+    {
+      "source": "Frame",
+      "target": "Kare",
+      "note": "user-xlsx"
     },
     {
       "source": "frame rate",
@@ -1334,6 +1569,16 @@
       "source": "framework",
       "target": "framework",
       "note": "engineering"
+    },
+    {
+      "source": "Frequency",
+      "target": "Frekans",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Frequency Domain",
+      "target": "Frekans Alanı",
+      "note": "user-xlsx"
     },
     {
       "source": "full softmax",
@@ -1364,6 +1609,16 @@
       "source": "Gaussian blur",
       "target": "Gaussian blur",
       "note": "imaging"
+    },
+    {
+      "source": "Gaussian Filter",
+      "target": "Gauss Filtresi",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Gaussian Kernel",
+      "target": "Gauss Çekirdeği",
+      "note": "user-xlsx"
     },
     {
       "source": "Gemini",
@@ -1476,6 +1731,11 @@
       "note": "acronym"
     },
     {
+      "source": "Gradient",
+      "target": "Gradyan",
+      "note": "user-xlsx"
+    },
+    {
       "source": "gradient accumulation",
       "target": "gradient accumulation",
       "note": "google-ml-glossary"
@@ -1546,9 +1806,19 @@
       "note": "google-ml-glossary"
     },
     {
+      "source": "Hadamard Product",
+      "target": "Eleman Bazlı Çarpım",
+      "note": "user-xlsx"
+    },
+    {
       "source": "hallucination",
       "target": "hallucination",
       "note": "google-ml-glossary"
+    },
+    {
+      "source": "Height",
+      "target": "Yükseklik",
+      "note": "user-xlsx"
     },
     {
       "source": "hidden layer",
@@ -1556,9 +1826,24 @@
       "note": "google-ml-glossary"
     },
     {
+      "source": "Hidden State",
+      "target": "Gizli Durum",
+      "note": "user-xlsx"
+    },
+    {
       "source": "hierarchical clustering",
       "target": "hierarchical clustering",
       "note": "google-ml-glossary"
+    },
+    {
+      "source": "High Frequency",
+      "target": "Yüksek Frekans",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "High-Pass Filter",
+      "target": "Yüksek Geçiren Filtre",
+      "note": "user-xlsx"
     },
     {
       "source": "hill climbing",
@@ -1589,6 +1874,11 @@
       "source": "holdout data",
       "target": "holdout data",
       "note": "google-ml-glossary"
+    },
+    {
+      "source": "Homogeneous Coordinates",
+      "target": "Homojen Koordinatlar",
+      "note": "user-xlsx"
     },
     {
       "source": "homography",
@@ -1626,6 +1916,16 @@
       "note": "google-ml-glossary"
     },
     {
+      "source": "Identity Matrix",
+      "target": "Birim Matris",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Image",
+      "target": "Görüntü",
+      "note": "user-xlsx"
+    },
+    {
       "source": "image captioning",
       "target": "image captioning",
       "note": "task"
@@ -1636,9 +1936,34 @@
       "note": "task"
     },
     {
+      "source": "Image Derivative",
+      "target": "Görüntü Türevi",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Image Embedding",
+      "target": "Görüntü Embedding'i",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Image Gradient",
+      "target": "Görüntü Gradyanı",
+      "note": "user-xlsx"
+    },
+    {
       "source": "image inpainting",
       "target": "image inpainting",
       "note": "task"
+    },
+    {
+      "source": "Image Patch",
+      "target": "Görüntü Parçası",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Image Plane",
+      "target": "Görüntü Düzlemi",
+      "note": "user-xlsx"
     },
     {
       "source": "image pyramid",
@@ -1669,6 +1994,11 @@
       "source": "image stitching",
       "target": "image stitching",
       "note": "task"
+    },
+    {
+      "source": "Imaging",
+      "target": "Görüntüleme",
+      "note": "user-xlsx"
     },
     {
       "source": "imbalanced dataset",
@@ -1711,6 +2041,11 @@
       "note": "google-ml-glossary"
     },
     {
+      "source": "Index",
+      "target": "İndeks",
+      "note": "user-xlsx"
+    },
+    {
       "source": "individual fairness",
       "target": "individual fairness",
       "note": "google-ml-glossary"
@@ -1734,6 +2069,11 @@
       "source": "information gain",
       "target": "information gain",
       "note": "google-ml-glossary"
+    },
+    {
+      "source": "Input",
+      "target": "Girdi",
+      "note": "user-xlsx"
     },
     {
       "source": "input generator",
@@ -1761,6 +2101,11 @@
       "note": "google-ml-glossary"
     },
     {
+      "source": "Interpolation",
+      "target": "Enterpolasyon",
+      "note": "user-xlsx"
+    },
+    {
       "source": "interpretability",
       "target": "interpretability",
       "note": "google-ml-glossary"
@@ -1781,6 +2126,11 @@
       "note": "geometry"
     },
     {
+      "source": "Inverse Matrix",
+      "target": "Ters Matris",
+      "note": "user-xlsx"
+    },
+    {
       "source": "IoU",
       "target": "IoU",
       "note": "acronym"
@@ -1791,9 +2141,19 @@
       "note": "google-ml-glossary"
     },
     {
+      "source": "Jacobian",
+      "target": "Jacobian Matrisi",
+      "note": "user-xlsx"
+    },
+    {
       "source": "JAX",
       "target": "JAX",
       "note": "google-ml-glossary"
+    },
+    {
+      "source": "Joint Probability",
+      "target": "Ortak Olasılık",
+      "note": "user-xlsx"
     },
     {
       "source": "k-fold cross validation",
@@ -1856,6 +2216,11 @@
       "note": "google-ml-glossary"
     },
     {
+      "source": "Label",
+      "target": "Etiket",
+      "note": "user-xlsx"
+    },
+    {
       "source": "label leakage",
       "target": "label leakage",
       "note": "google-ml-glossary"
@@ -1876,6 +2241,11 @@
       "note": "architecture"
     },
     {
+      "source": "Laplacian",
+      "target": "Laplasyen",
+      "note": "user-xlsx"
+    },
+    {
       "source": "large language model",
       "target": "large language model",
       "note": "architecture"
@@ -1889,6 +2259,16 @@
       "source": "latent space",
       "target": "latent space",
       "note": "architecture"
+    },
+    {
+      "source": "Latent Variable",
+      "target": "Gizil Değişken",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Layer",
+      "target": "Katman",
+      "note": "user-xlsx"
     },
     {
       "source": "layer normalization",
@@ -1936,6 +2316,21 @@
       "note": "google-ml-glossary"
     },
     {
+      "source": "Likelihood",
+      "target": "Olabilirlik",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Linear Combination",
+      "target": "Doğrusal Kombinasyon",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Linear Filter",
+      "target": "Doğrusal Filtre",
+      "note": "user-xlsx"
+    },
+    {
       "source": "linear model",
       "target": "linear model",
       "note": "google-ml-glossary"
@@ -1944,6 +2339,11 @@
       "source": "linear regression",
       "target": "linear regression",
       "note": "google-ml-glossary"
+    },
+    {
+      "source": "Linear Transformation",
+      "target": "Doğrusal Dönüşüm",
+      "note": "user-xlsx"
     },
     {
       "source": "LIT",
@@ -1959,6 +2359,11 @@
       "source": "LLM evaluations (evals)",
       "target": "LLM evaluations (evals)",
       "note": "google-ml-glossary"
+    },
+    {
+      "source": "Localization",
+      "target": "Konumlandırma",
+      "note": "user-xlsx"
     },
     {
       "source": "Log Loss",
@@ -2016,6 +2421,16 @@
       "note": "google-ml-glossary"
     },
     {
+      "source": "Low Frequency",
+      "target": "Düşük Frekans",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Low-Pass Filter",
+      "target": "Alçak Geçiren Filtre",
+      "note": "user-xlsx"
+    },
+    {
       "source": "Low-Rank Adaptability (LoRA)",
       "target": "Low-Rank Adaptability (LoRA)",
       "note": "google-ml-glossary"
@@ -2051,6 +2466,11 @@
       "note": "acronym"
     },
     {
+      "source": "Marginal Probability",
+      "target": "Marjinal Olasılık",
+      "note": "user-xlsx"
+    },
+    {
       "source": "Markov decision process (MDP)",
       "target": "Markov decision process (MDP)",
       "note": "google-ml-glossary"
@@ -2076,9 +2496,19 @@
       "note": "google-ml-glossary"
     },
     {
+      "source": "Matrix",
+      "target": "Matris",
+      "note": "user-xlsx"
+    },
+    {
       "source": "matrix factorization",
       "target": "matrix factorization",
       "note": "google-ml-glossary"
+    },
+    {
+      "source": "Matrix Product",
+      "target": "Matris Çarpımı",
+      "note": "user-xlsx"
     },
     {
       "source": "max pooling",
@@ -2089,6 +2519,11 @@
       "source": "MBPP",
       "target": "MBPP",
       "note": "google-ml-glossary"
+    },
+    {
+      "source": "Mean",
+      "target": "Ortalama",
+      "note": "user-xlsx"
     },
     {
       "source": "Mean Absolute Error (MAE)",
@@ -2181,6 +2616,11 @@
       "note": "acronym"
     },
     {
+      "source": "Model",
+      "target": "Model",
+      "note": "user-xlsx"
+    },
+    {
       "source": "model capacity",
       "target": "model capacity",
       "note": "google-ml-glossary"
@@ -2231,6 +2671,16 @@
       "note": "google-ml-glossary"
     },
     {
+      "source": "Motion",
+      "target": "Hareket",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Motion Estimation",
+      "target": "Hareket Tahmini",
+      "note": "user-xlsx"
+    },
+    {
       "source": "MT",
       "target": "MT",
       "note": "google-ml-glossary"
@@ -2271,6 +2721,11 @@
       "note": "google-ml-glossary"
     },
     {
+      "source": "Multimodal",
+      "target": "Çok Modlu",
+      "note": "user-xlsx"
+    },
+    {
       "source": "multimodal instruction-tuned",
       "target": "multimodal instruction-tuned",
       "note": "google-ml-glossary"
@@ -2296,9 +2751,19 @@
       "note": "google-ml-glossary"
     },
     {
+      "source": "Multiscale Representation",
+      "target": "Çok Ölçekli Gösterim",
+      "note": "user-xlsx"
+    },
+    {
       "source": "multitask",
       "target": "multitask",
       "note": "google-ml-glossary"
+    },
+    {
+      "source": "Multiview Geometry",
+      "target": "Çok Görüntülü Geometri",
+      "note": "user-xlsx"
     },
     {
       "source": "N-gram",
@@ -2396,6 +2861,11 @@
       "note": "google-ml-glossary"
     },
     {
+      "source": "Noise",
+      "target": "Gürültü",
+      "note": "user-xlsx"
+    },
+    {
       "source": "non-binary condition",
       "target": "non-binary condition",
       "note": "google-ml-glossary"
@@ -2426,6 +2896,11 @@
       "note": "google-ml-glossary"
     },
     {
+      "source": "Norm",
+      "target": "Norm",
+      "note": "user-xlsx"
+    },
+    {
       "source": "normalization",
       "target": "normalization",
       "note": "google-ml-glossary"
@@ -2451,9 +2926,24 @@
       "note": "google-ml-glossary"
     },
     {
+      "source": "Nyquist Rate",
+      "target": "Nyquist Oranı",
+      "note": "user-xlsx"
+    },
+    {
       "source": "object detection",
       "target": "object detection",
       "note": "task"
+    },
+    {
+      "source": "Object Motion",
+      "target": "Nesne Hareketi",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Object Recognition",
+      "target": "Nesne Tanıma",
+      "note": "user-xlsx"
     },
     {
       "source": "object tracking",
@@ -2521,6 +3011,11 @@
       "note": "google-ml-glossary"
     },
     {
+      "source": "Optical Axis",
+      "target": "Optik Eksen",
+      "note": "user-xlsx"
+    },
+    {
       "source": "optical character recognition",
       "target": "optical character recognition",
       "note": "task"
@@ -2529,6 +3024,11 @@
       "source": "optical flow",
       "target": "optical flow",
       "note": "task"
+    },
+    {
+      "source": "Optimization",
+      "target": "Optimizasyon",
+      "note": "user-xlsx"
     },
     {
       "source": "optimizer",
@@ -2561,6 +3061,11 @@
       "note": "google-ml-glossary"
     },
     {
+      "source": "Output",
+      "target": "Çıktı",
+      "note": "user-xlsx"
+    },
+    {
       "source": "output layer",
       "target": "output layer",
       "note": "google-ml-glossary"
@@ -2581,6 +3086,11 @@
       "note": "google-ml-glossary"
     },
     {
+      "source": "Padding",
+      "target": "Dolgulama",
+      "note": "user-xlsx"
+    },
+    {
       "source": "PaLM",
       "target": "PaLM",
       "note": "google-ml-glossary"
@@ -2594,6 +3104,11 @@
       "source": "panoptic segmentation",
       "target": "panoptic segmentation",
       "note": "task"
+    },
+    {
+      "source": "Parameter",
+      "target": "Parametre",
+      "note": "user-xlsx"
     },
     {
       "source": "Parameter Server (PS)",
@@ -2646,6 +3161,11 @@
       "note": "google-ml-glossary"
     },
     {
+      "source": "Perceptual Grouping",
+      "target": "Algısal Gruplama",
+      "note": "user-xlsx"
+    },
+    {
       "source": "permutation variable importances",
       "target": "permutation variable importances",
       "note": "google-ml-glossary"
@@ -2656,6 +3176,16 @@
       "note": "google-ml-glossary"
     },
     {
+      "source": "Perspective Projection",
+      "target": "Perspektif İzdüşüm",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Pinhole Camera",
+      "target": "İğne Deliği Kamera Modeli",
+      "note": "user-xlsx"
+    },
+    {
       "source": "pipeline",
       "target": "pipeline",
       "note": "engineering"
@@ -2664,6 +3194,11 @@
       "source": "pipelining",
       "target": "pipelining",
       "note": "google-ml-glossary"
+    },
+    {
+      "source": "Pixel",
+      "target": "Piksel",
+      "note": "user-xlsx"
     },
     {
       "source": "pjit",
@@ -2726,6 +3261,11 @@
       "note": "google-ml-glossary"
     },
     {
+      "source": "Posterior",
+      "target": "Sonsal Dağılım",
+      "note": "user-xlsx"
+    },
+    {
       "source": "PR AUC (area under the PR curve)",
       "target": "PR AUC (area under the PR curve)",
       "note": "google-ml-glossary"
@@ -2746,6 +3286,11 @@
       "note": "google-ml-glossary"
     },
     {
+      "source": "Precision",
+      "target": "Kesinlik",
+      "note": "user-xlsx"
+    },
+    {
       "source": "precision at k (precision@k)",
       "target": "precision at k (precision@k)",
       "note": "google-ml-glossary"
@@ -2754,6 +3299,11 @@
       "source": "precision-recall curve",
       "target": "precision-recall curve",
       "note": "metric"
+    },
+    {
+      "source": "Prediction",
+      "target": "Tahmin",
+      "note": "user-xlsx"
     },
     {
       "source": "prediction bias",
@@ -2791,6 +3341,16 @@
       "note": "training"
     },
     {
+      "source": "Principal Point",
+      "target": "Ana Nokta",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Prior",
+      "target": "Önsel Dağılım",
+      "note": "user-xlsx"
+    },
+    {
       "source": "prior belief",
       "target": "prior belief",
       "note": "google-ml-glossary"
@@ -2806,9 +3366,24 @@
       "note": "google-ml-glossary"
     },
     {
+      "source": "Probability",
+      "target": "Olasılık",
+      "note": "user-xlsx"
+    },
+    {
       "source": "probability density function",
       "target": "probability density function",
       "note": "google-ml-glossary"
+    },
+    {
+      "source": "Probability Distribution",
+      "target": "Olasılık Dağılımı",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Probability Mass Function",
+      "target": "Olasılık Kütle Fonksiyonu",
+      "note": "user-xlsx"
     },
     {
       "source": "procedural memory",
@@ -2901,6 +3476,16 @@
       "note": "google-ml-glossary"
     },
     {
+      "source": "Radiance",
+      "target": "Radyans",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Radiance Field",
+      "target": "Radyans Alanı",
+      "note": "user-xlsx"
+    },
+    {
       "source": "RAG",
       "target": "RAG",
       "note": "google-ml-glossary"
@@ -2914,6 +3499,11 @@
       "source": "random policy",
       "target": "random policy",
       "note": "google-ml-glossary"
+    },
+    {
+      "source": "Random Variable",
+      "target": "Rastgele Değişken",
+      "note": "user-xlsx"
     },
     {
       "source": "rank (ordinality)",
@@ -2969,6 +3559,11 @@
       "source": "receptive field",
       "target": "receptive field",
       "note": "architecture"
+    },
+    {
+      "source": "Recognition",
+      "target": "Tanıma",
+      "note": "user-xlsx"
     },
     {
       "source": "Recognizing Textual Entailment (RTE)",
@@ -3051,6 +3646,11 @@
       "note": "google-ml-glossary"
     },
     {
+      "source": "Representation",
+      "target": "Temsil",
+      "note": "user-xlsx"
+    },
+    {
       "source": "representation learning",
       "target": "representation learning",
       "note": "field"
@@ -3064,6 +3664,11 @@
       "source": "ResNet",
       "target": "ResNet",
       "note": "acronym"
+    },
+    {
+      "source": "Resolution",
+      "target": "Çözünürlük",
+      "note": "user-xlsx"
     },
     {
       "source": "response set",
@@ -3121,6 +3726,11 @@
       "note": "google-ml-glossary"
     },
     {
+      "source": "Rotation",
+      "target": "Dönme",
+      "note": "user-xlsx"
+    },
+    {
       "source": "rotational invariance",
       "target": "rotational invariance",
       "note": "google-ml-glossary"
@@ -3151,6 +3761,11 @@
       "note": "google-ml-glossary"
     },
     {
+      "source": "Row",
+      "target": "Satır",
+      "note": "user-xlsx"
+    },
+    {
       "source": "RTE",
       "target": "RTE",
       "note": "google-ml-glossary"
@@ -3161,9 +3776,19 @@
       "note": "acronym"
     },
     {
+      "source": "Sampling",
+      "target": "Örnekleme",
+      "note": "user-xlsx"
+    },
+    {
       "source": "sampling bias",
       "target": "sampling bias",
       "note": "google-ml-glossary"
+    },
+    {
+      "source": "Sampling Rate",
+      "target": "Örnekleme Oranı",
+      "note": "user-xlsx"
     },
     {
       "source": "sampling with replacement",
@@ -3179,6 +3804,16 @@
       "source": "Saver",
       "target": "Saver",
       "note": "google-ml-glossary"
+    },
+    {
+      "source": "Scalar",
+      "target": "Skaler",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Scale",
+      "target": "Ölçek",
+      "note": "user-xlsx"
     },
     {
       "source": "scene understanding",
@@ -3231,6 +3866,11 @@
       "note": "task"
     },
     {
+      "source": "Semantic Similarity",
+      "target": "Anlamsal Benzerlik",
+      "note": "user-xlsx"
+    },
+    {
       "source": "semi-supervised learning",
       "target": "semi-supervised learning",
       "note": "field"
@@ -3239,6 +3879,11 @@
       "source": "sensitive attribute",
       "target": "sensitive attribute",
       "note": "google-ml-glossary"
+    },
+    {
+      "source": "Sensor",
+      "target": "Sensör",
+      "note": "user-xlsx"
     },
     {
       "source": "sentiment analysis",
@@ -3291,6 +3936,11 @@
       "note": "google-ml-glossary"
     },
     {
+      "source": "Signal",
+      "target": "Sinyal",
+      "note": "user-xlsx"
+    },
+    {
       "source": "similarity measure",
       "target": "similarity measure",
       "note": "google-ml-glossary"
@@ -3299,6 +3949,11 @@
       "source": "single program / multiple data (SPMD)",
       "target": "single program / multiple data (SPMD)",
       "note": "google-ml-glossary"
+    },
+    {
+      "source": "Single View Metrology",
+      "target": "Tek Görüntüden Ölçüm",
+      "note": "user-xlsx"
     },
     {
       "source": "size invariance",
@@ -3324,6 +3979,16 @@
       "source": "SLAM",
       "target": "SLAM",
       "note": "acronym"
+    },
+    {
+      "source": "Slice",
+      "target": "Dilim",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Smoothing",
+      "target": "Yumuşatma",
+      "note": "user-xlsx"
     },
     {
       "source": "soft prompt tuning",
@@ -3354,6 +4019,11 @@
       "source": "sparsity",
       "target": "sparsity",
       "note": "google-ml-glossary"
+    },
+    {
+      "source": "Spatial Domain",
+      "target": "Uzamsal Alan",
+      "note": "user-xlsx"
     },
     {
       "source": "spatial pooling",
@@ -3401,6 +4071,11 @@
       "note": "google-ml-glossary"
     },
     {
+      "source": "Standard Deviation",
+      "target": "Standart Sapma",
+      "note": "user-xlsx"
+    },
+    {
       "source": "state machine agent",
       "target": "state machine agent",
       "note": "google-ml-glossary"
@@ -3434,6 +4109,16 @@
       "source": "stereo matching",
       "target": "stereo matching",
       "note": "task"
+    },
+    {
+      "source": "Stereo Pair",
+      "target": "Stereo Görüntü Çifti",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Stereo Vision",
+      "target": "Stereo Görü",
+      "note": "user-xlsx"
     },
     {
       "source": "stochastic gradient descent",
@@ -3516,6 +4201,11 @@
       "note": "google-ml-glossary"
     },
     {
+      "source": "Synthetic Image",
+      "target": "Sentetik Görüntü",
+      "note": "user-xlsx"
+    },
+    {
       "source": "T5",
       "target": "T5",
       "note": "google-ml-glossary"
@@ -3531,6 +4221,11 @@
       "note": "google-ml-glossary"
     },
     {
+      "source": "Target",
+      "target": "Hedef",
+      "note": "user-xlsx"
+    },
+    {
       "source": "target network",
       "target": "target network",
       "note": "google-ml-glossary"
@@ -3541,9 +4236,19 @@
       "note": "google-ml-glossary"
     },
     {
+      "source": "Temporal",
+      "target": "Zamansal",
+      "note": "user-xlsx"
+    },
+    {
       "source": "temporal data",
       "target": "temporal data",
       "note": "google-ml-glossary"
+    },
+    {
+      "source": "Temporal Filter",
+      "target": "Zamansal Filtre",
+      "note": "user-xlsx"
     },
     {
       "source": "tensor",
@@ -3611,9 +4316,19 @@
       "note": "data"
     },
     {
+      "source": "Text Embedding",
+      "target": "Metin Embedding'i",
+      "note": "user-xlsx"
+    },
+    {
       "source": "text span",
       "target": "text span",
       "note": "google-ml-glossary"
+    },
+    {
+      "source": "Texture",
+      "target": "Doku",
+      "note": "user-xlsx"
     },
     {
       "source": "threshold (for decision trees)",
@@ -3701,6 +4416,11 @@
       "note": "data"
     },
     {
+      "source": "Training",
+      "target": "Eğitim",
+      "note": "user-xlsx"
+    },
+    {
       "source": "training loss",
       "target": "training loss",
       "note": "google-ml-glossary"
@@ -3731,14 +4451,29 @@
       "note": "architecture"
     },
     {
+      "source": "Translation",
+      "target": "Öteleme",
+      "note": "user-xlsx"
+    },
+    {
       "source": "translational invariance",
       "target": "translational invariance",
       "note": "google-ml-glossary"
     },
     {
+      "source": "Transpose",
+      "target": "Transpoz",
+      "note": "user-xlsx"
+    },
+    {
       "source": "tree-of-thought prompting (ToT)",
       "target": "tree-of-thought prompting (ToT)",
       "note": "google-ml-glossary"
+    },
+    {
+      "source": "Triangulation",
+      "target": "Üçgenleme",
+      "note": "user-xlsx"
     },
     {
       "source": "trigram",
@@ -3901,6 +4636,11 @@
       "note": "google-ml-glossary"
     },
     {
+      "source": "Variance",
+      "target": "Varyans",
+      "note": "user-xlsx"
+    },
+    {
       "source": "variational autoencoder",
       "target": "variational autoencoder",
       "note": "architecture"
@@ -3909,6 +4649,11 @@
       "source": "variational autoencoder (VAE)",
       "target": "variational autoencoder (VAE)",
       "note": "google-ml-glossary"
+    },
+    {
+      "source": "Vector",
+      "target": "Vektör",
+      "note": "user-xlsx"
     },
     {
       "source": "Vertex",
@@ -3926,9 +4671,19 @@
       "note": "google-ml-glossary"
     },
     {
+      "source": "Video Sequence",
+      "target": "Video Dizisi",
+      "note": "user-xlsx"
+    },
+    {
       "source": "vision transformer",
       "target": "vision transformer",
       "note": "architecture"
+    },
+    {
+      "source": "Vision-Language Model",
+      "target": "Görsel-Dil Modeli",
+      "note": "user-xlsx"
     },
     {
       "source": "visual question answering",
@@ -3949,6 +4704,11 @@
       "source": "Wasserstein loss",
       "target": "Wasserstein loss",
       "note": "google-ml-glossary"
+    },
+    {
+      "source": "Weight",
+      "target": "Ağırlık",
+      "note": "user-xlsx"
     },
     {
       "source": "weight decay",
@@ -3976,6 +4736,11 @@
       "note": "google-ml-glossary"
     },
     {
+      "source": "Width",
+      "target": "Genişlik",
+      "note": "user-xlsx"
+    },
+    {
       "source": "Winograd Schema Challenge (WSC)",
       "target": "Winograd Schema Challenge (WSC)",
       "note": "google-ml-glossary"
@@ -3999,6 +4764,11 @@
       "source": "Words in Context (WiC)",
       "target": "Words in Context (WiC)",
       "note": "google-ml-glossary"
+    },
+    {
+      "source": "World Coordinates",
+      "target": "Dünya Koordinatları",
+      "note": "user-xlsx"
     },
     {
       "source": "WSC",

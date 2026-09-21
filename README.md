@@ -173,8 +173,13 @@ Two ready-made lists ship with the repo:
 
 | File | Terms | Scope |
 |---|---|---|
-| `glossaries/computer-vision.en-tr.json` | 239 | hand-written computer-vision list |
-| `glossaries/ai-ml.en-tr.json` | 807 | the above plus the term names of Google's ML Glossary |
+| `glossaries/computer-vision.en-tr.json` | 239 | hand-written computer-vision list, all kept in English |
+| `glossaries/ai-ml.en-tr.json` | 961 | the above, the term names of Google's ML Glossary, and 154 terms given a fixed Turkish wording |
+
+The second file mixes both uses: 807 entries map a term to itself (keep it in English) and
+154 prescribe a Turkish word (`Matrix` → `Matris`, `Pixel` → `Piksel`). Where the two
+sources disagreed - `Convolution`, `Tensor`, `Edge Detection`, `Downsampling` and 92 others -
+the English-keeping entry won.
 
 ```
 book-translator run -i book.pdf -o out --mode overlay     --glossary glossaries/ai-ml.en-tr.json
