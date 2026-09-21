@@ -284,6 +284,23 @@ python -m mypy src           # strict
 python -m ruff check src tests
 ```
 
+## Rate limits and retries
+
+A provider answering **HTTP 429** is asking for time, not refusing the work, so it has its
+own retry budget and can never turn a unit into a permanent failure.
+
+| Setting (`BOOK_TRANSLATOR_…`) | Default | What it does |
+|---|---|---|
+| `MAX_RETRIES` (`--max-retries`) | 5 | Retries for errors the unit itself causes (5xx, empty answer). A 429 does **not** spend these, and does not increase the stored `retry_count`. |
+| `RATE_LIMIT_MAX_RETRIES` | 20 | How many times a unit waits out a 429 in one run. Counted in memory: a resumed job starts the count over. |
+| `RATE_LIMIT_MIN_DELAY_S` | 5 | Floor under the backoff jitter for a 429. Full jitter draws from `[0, ceiling]`, so without a floor a budget can be spent in seconds without ever waiting. |
+| `RATE_LIMIT_COOL_OFF_S` | 5 | After a 429 no new request leaves at all for this long. Halving the concurrency stops helping once it is down to 1 permit, which is where a throttled run lives. |
+| `CONCURRENCY` (`--concurrency`) | 4 | Upper bound; the limiter halves it on every 429 and grows it back by one after 20 clean calls. On the DeepL **free** tier `--concurrency 2` starts closer to what the tier allows. The default stays 4 because it is a ceiling, not a target, and lowering it would slow every paid run to fix a free-tier symptom. |
+
+When the rate-limit budget of a unit does run out the **job is paused** (exit code 3,
+status `PAUSED`) with every unit still `PENDING` and its retry budget untouched; re-running
+the same command resumes it. Nothing is lost and nothing is paid for twice.
+
 ## Limitations
 
 * **Mathematics set in text fonts.** Display equations are detected by font (Computer Modern

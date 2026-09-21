@@ -75,6 +75,17 @@ class Settings(BaseSettings):
     chunk_max: int = Field(default=1500, ge=200)
     backoff_base_s: float = Field(default=2.0, gt=0)
     backoff_cap_s: float = Field(default=60.0, gt=0)
+    # Rate limiting (HTTP 429) gets its own budget: ``max_retries`` is for a unit the
+    # provider keeps refusing, and "slow down" is not a refusal. With the shared budget a
+    # throttled 364-page run buried 2066 units in FAILED while 40% of the character quota
+    # was still unspent. When even this budget runs out the job is PAUSED, not failed.
+    rate_limit_max_retries: int = Field(default=20, ge=0, le=500)
+    # Full jitter draws from [0, ceiling], so a retry can come back almost immediately;
+    # under a rate limit that just spends the budget without waiting. This is the floor.
+    rate_limit_min_delay_s: float = Field(default=5.0, ge=0)
+    # After a 429 the whole pool holds still for this long - halving the permits does
+    # nothing once they are down to 1, which is where a throttled run lives.
+    rate_limit_cool_off_s: float = Field(default=5.0, ge=0)
     local_model_dir: Path = Path.home() / ".cache" / "book-translator" / "models"
     local_model: str = "opus-mt-tc-big-en-tr"
     local_device: Literal["cpu", "cuda"] = "cpu"

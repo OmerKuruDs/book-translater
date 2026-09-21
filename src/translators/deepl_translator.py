@@ -22,17 +22,23 @@ from deepl import exceptions as deepl_exc
 
 from ..config import Settings
 from ..domain.models import EffectiveGlossary, GlossaryStrategy
-from ..domain.result import AppError, ErrorCode, ErrorScope, Ok, Result, err
+from ..domain.result import AppError, Err, ErrorCode, ErrorScope, Ok, Result, err
 from .base import (
     BaseTranslator,
     GlossaryBinding,
+    ProviderGlossary,
     ProviderResponse,
     TranslationRequest,
     TranslatorCapabilities,
 )
-from .protect import strip_control_chars
+from .protect import escape_markup, strip_control_chars
 
-__all__ = ["DeepLTranslator", "classify_deepl_exception", "glossary_name_for"]
+__all__ = [
+    "DeepLTranslator",
+    "classify_deepl_exception",
+    "glossary_name_for",
+    "tool_glossary_hash",
+]
 
 ClientFactory = Callable[[str, Optional[str]], Any]
 
@@ -59,6 +65,30 @@ def _redact(exc: BaseException) -> str:
     return f"{type(exc).__name__}: {str(exc)[:200]}"
 
 
+def tool_glossary_hash(name: str) -> Optional[str]:
+    """The glossary hash inside a name :func:`glossary_name_for` produced, else ``None``.
+
+    ``None`` marks a glossary as *not ours*: the cleanup leaves those alone.
+    """
+    if not name.startswith(_GLOSSARY_NAME_PREFIX):
+        return None
+    return name[len(_GLOSSARY_NAME_PREFIX) :].strip() or None
+
+
+def _mentions_glossary(exc: BaseException) -> bool:
+    """Does a 456 complain about glossaries rather than about characters?
+
+    DeepL answers HTTP 456 / ``QuotaExceededException`` for two unrelated situations:
+    the character quota of the billing period, and "you already have as many glossaries
+    as you may have". Measured on a 484k/1M account (``any_limit_reached=False``): the
+    second one arrives as ``"Quota for this billing period has been exceeded, message:
+    Too many glossaries"``, and the two need opposite fixes - wait/raise the quota vs.
+    delete a glossary. The needle is the substring "glossar" so a reworded DeepL message
+    still matches; when it does not, the character-quota reading stays as the safe default.
+    """
+    return "glossar" in str(exc).lower()
+
+
 def classify_deepl_exception(exc: BaseException) -> AppError:
     """Map an SDK/transport exception to the error table of design doc 02, 5.3."""
     status: Optional[int] = getattr(exc, "http_status_code", None)
@@ -74,6 +104,18 @@ def classify_deepl_exception(exc: BaseException) -> AppError:
             cause=cause,
         )
     if isinstance(exc, deepl_exc.QuotaExceededException):
+        if _mentions_glossary(exc):
+            return AppError(
+                ErrorCode.PROVIDER_GLOSSARY_LIMIT,
+                "DeepL refused a new glossary because the account already holds as many "
+                "as it may (HTTP 456). This is not the character quota - characters may "
+                "well be left, and waiting for the next billing period does not help. "
+                "Delete an existing glossary; `book-translator glossary --cleanup-remote` "
+                "deletes the ones this tool created",
+                ErrorScope.USER,
+                context={"http_status": status or 456},
+                cause=cause,
+            )
         return AppError(
             ErrorCode.PROVIDER_QUOTA,
             "DeepL character quota exhausted for this billing period (HTTP 456); "
@@ -253,6 +295,34 @@ class DeepLTranslator(BaseTranslator):
             )
         )
 
+    # -- provider-side glossary administration -------------------------------- #
+
+    async def list_provider_glossaries(self) -> Result[List[ProviderGlossary]]:
+        """Every glossary of the account, each tagged with the hash if this tool made it."""
+        try:
+            infos = await asyncio.to_thread(self._client.list_glossaries)
+        except Exception as exc:  # noqa: BLE001 - classified, never re-raised
+            return Err(classify_deepl_exception(exc))
+        listing: List[ProviderGlossary] = []
+        for info in infos:
+            name = str(getattr(info, "name", "") or "")
+            listing.append(
+                ProviderGlossary(
+                    glossary_id=str(getattr(info, "glossary_id", "") or ""),
+                    name=name,
+                    entries=int(getattr(info, "entry_count", 0) or 0),
+                    tool_hash=tool_glossary_hash(name),
+                )
+            )
+        return Ok(listing)
+
+    async def delete_provider_glossary(self, glossary_id: str) -> Result[None]:
+        try:
+            await asyncio.to_thread(self._client.delete_glossary, glossary_id)
+        except Exception as exc:  # noqa: BLE001 - classified, never re-raised
+            return Err(classify_deepl_exception(exc))
+        return Ok(None)
+
     # -- translation ---------------------------------------------------------- #
 
     def _batches(self, texts: Sequence[str]) -> List[List[str]]:
@@ -281,9 +351,14 @@ class DeepLTranslator(BaseTranslator):
         glossary_id = request.glossary.provider_glossary_id if request.glossary else None
         extra: Dict[str, Any] = {}
         if request.context:
-            # the context window never goes through ``protect``; ``tag_handling="xml"``
-            # judges it the same way, so one control character there fails the batch too
-            extra["context"] = strip_control_chars(request.context)
+            # the context window never goes through ``protect``, yet ``tag_handling="xml"``
+            # parses it exactly like the payload: one control character or one bare "<" in
+            # the page text fails the whole batch, the payload units included. It gets the
+            # same two treatments the payload gets.
+            context = strip_control_chars(request.context)
+            extra["context"] = (
+                escape_markup(context) if request.protect_mode == "xml" else context
+            )
         out: List[str] = []
         billed = 0
         detected: Optional[str] = None

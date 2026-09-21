@@ -111,6 +111,11 @@ ERROR_HINTS: Dict[ErrorCode, str] = {
         "aynı işi yeniden başlatmak kalınan yerden devam eder, ödenen karakterler "
         "ikinci kez gönderilmez."
     ),
+    ErrorCode.PROVIDER_GLOSSARY_LIMIT: (
+        "Sağlayıcı hesabında tutulabilecek sözlük sayısı dolu; karakter kotasıyla ilgisi yok, "
+        "beklemek çözmez. Var olan bir sözlüğü silin: `book-translator glossary "
+        "--cleanup-remote` bu aracın oluşturduğu eski sözlükleri temizler."
+    ),
     ErrorCode.PROVIDER_AUTH: (
         "Sağlayıcı kimlik doğrulamayı reddetti. .env dosyasındaki API anahtarını kontrol edin."
     ),
@@ -645,7 +650,10 @@ def _parse_estimate(warnings: Sequence[str]) -> Optional[JobEstimate]:
 def _exit_message(exit_code: int) -> str:
     return {
         2: "Çıktı eksik: bazı birimler çevrilemedi, yazılabilen dosyalar aşağıda.",
-        3: "İş duraklatıldı (kota ya da kimlik doğrulama). Durum korundu.",
+        3: (
+            "İş duraklatıldı (kota, kimlik doğrulama ya da sağlayıcının hız sınırı). "
+            "Durum korundu; aynı çıktı dizinini yeniden çalıştırınca kaldığı yerden devam eder."
+        ),
         4: "Çıktı dizini başka bir işlem tarafından kilitli.",
         5: "Kayıtlı durum ile bu çalıştırma uyuşmuyor.",
         130: "İş yarıda kesildi; kayıtlı durum bozulmadı.",

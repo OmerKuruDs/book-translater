@@ -890,9 +890,20 @@ class ChunkRepository:
 
     @boundary
     def reschedule(
-        self, job_id: str, chunk_id: int, error: AppError, next_attempt_at: datetime
+        self,
+        job_id: str,
+        chunk_id: int,
+        error: AppError,
+        next_attempt_at: datetime,
+        bump_retry: bool = True,
     ) -> Result[bool]:
-        """PROCESSING -> PENDING with backoff (D3: ``False`` when the precondition failed)."""
+        """PROCESSING -> PENDING with backoff (D3: ``False`` when the precondition failed).
+
+        ``bump_retry=False`` reschedules *without* spending the stored retry budget: a
+        rate limit says "not now", not "this unit is broken", and it carries its own,
+        larger budget in the orchestrator. Leaving ``retry_count`` alone also means a job
+        resumed after a throttled run still has its full budget for real errors.
+        """
         with self._db.write_session() as session:
             outcome = session.connection().execute(
                 update(m.Chunk)
@@ -903,7 +914,7 @@ class ChunkRepository:
                 )
                 .values(
                     status="PENDING",
-                    retry_count=m.Chunk.retry_count + 1,
+                    retry_count=m.Chunk.retry_count + (1 if bump_retry else 0),
                     next_attempt_at=next_attempt_at,
                     last_error_code=error.code.value,
                     last_error=truncate_error(error.message),
@@ -1697,9 +1708,20 @@ class OverlayBlockRepository:
 
     @boundary
     def reschedule(
-        self, job_id: str, unit_id: int, error: AppError, next_attempt_at: datetime
+        self,
+        job_id: str,
+        unit_id: int,
+        error: AppError,
+        next_attempt_at: datetime,
+        bump_retry: bool = True,
     ) -> Result[bool]:
-        """PROCESSING -> PENDING with backoff (D3: ``False`` when the precondition failed)."""
+        """PROCESSING -> PENDING with backoff (D3: ``False`` when the precondition failed).
+
+        ``bump_retry=False`` reschedules *without* spending the stored retry budget: a
+        rate limit says "not now", not "this unit is broken", and it carries its own,
+        larger budget in the orchestrator. Leaving ``retry_count`` alone also means a job
+        resumed after a throttled run still has its full budget for real errors.
+        """
         with self._db.write_session() as session:
             outcome = session.connection().execute(
                 update(m.OverlayBlock)
@@ -1710,7 +1732,7 @@ class OverlayBlockRepository:
                 )
                 .values(
                     status="PENDING",
-                    retry_count=m.OverlayBlock.retry_count + 1,
+                    retry_count=m.OverlayBlock.retry_count + (1 if bump_retry else 0),
                     next_attempt_at=next_attempt_at,
                     last_error_code=error.code.value,
                     last_error=truncate_error(error.message),

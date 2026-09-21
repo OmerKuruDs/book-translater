@@ -83,7 +83,7 @@ Reflow exit 0 (10/10 chunk, 8991 kr) · overlay exit 0 (43/43 birim, 3/3 sayfa) 
 - Boş/kesik yanıt kuralı: 1. kez reschedule, 2. kez lenient tamamlama + review_flag, sağlayıcı-seviyesi `PROVIDER_EMPTY_RESPONSE` 3. kez FAILED; sayaç `last_error` ön ekiyle restart'a dayanıklı.
 - `--fresh`: `extract`/`run` DB + tüm artefaktları arşivler; `translate(fresh=True)` sadece DB'yi arşivler, `source_book.md`/`glossary.json` kalır. `completed == 0` iken düzenlenmiş `source_book.md` otomatik yeniden chunk'lanır (O1).
 - Heartbeat gerçek `asyncio.sleep` kullanır (aralık enjekte edilebilir).
-- Provider binding `translator.name` ile karşılaştırılır. `--cleanup-remote` kabul edilir ama "uygulanmadı" der. `<output>/.env` fallback'i yok (sadece cwd `.env`).
+- Provider binding `translator.name` ile karşılaştırılır. `--cleanup-remote` uygulandı: sağlayıcıda yalnız `book-translator:` önekli sözlükleri siler, güncel olanı ve kullanıcının kendi sözlüklerini korur. `<output>/.env` fallback'i yok (sadece cwd `.env`).
 - Açık sorular: redaction deseni UUID job id'lerini de mesaj içinde `***` yapar; uzun `extract` sırasında heartbeat yok (60 s stale → başka süreç kirayı alabilir); `--allow-non-english` yine `source_lang="EN"` gönderir (TranslationRequest değişikliği gerekir).
 
 ### Faz A'da tasarımdan sapmalar (Code Reviewer için)
@@ -346,3 +346,144 @@ Doğrulama (`config.validate_for_provider`): yedek sağlayıcı birincille aynı
 - Yedekleme durumu veritabanına yazılmıyor (bilerek): kalıcılık run ömründe.
 
 Doğrulama: mypy strict + ruff temiz; test sayıları aşağıdaki toplam satırında.
+
+## 364 sayfalık koşunun yarıda kalması (2026-09-21) — iki kök neden
+
+Gerçek koşu `web-jobs/1c2fbfaef4e9234e/`: 3973 overlay biriminin **1842'si COMPLETED,
+2131'i FAILED**. Karakter kotası dolu değildi (605.291/1.000.000). Hata dağılımı
+veritabanından ölçüldü:
+
+| `last_error_code` | Birim |
+|---|---|
+| `provider_rate_limited` | 2066 |
+| `provider_bad_request` | 65 |
+
+İki ayrı hata, iki ayrı düzeltme. Veritabanı **salt okunur** açıldı, değiştirilmedi.
+
+### 1. HTTP 400 — kaçışlanmamış `<` tüm batch'i düşürüyordu
+
+DeepL `tag_handling="xml"` ile çağrılıyor, yani istek bir XML ayrıştırıcısından geçiyor.
+Bir programlama kitabı ise XML olmayan metinle dolu:
+
+```
+5. CMake will have generated a Visual Studio solution file at <opencv_build_folder>/OpenCV.sln.
+> mkdir <build_folder>
+Joe Minichino is an R&D labs engineer at Teamwork.
+```
+
+`<opencv_build_folder>` kapanmamış bir etiket gibi görünüyor → ayrıştırıcı **isteğin
+tamamını** reddediyor. Ölçüm: 65 birimin **22'si** tek başına ayrıştırılamıyor, kalan **43'ü**
+yalnızca aynı batch'te oldukları için düştü ("Contributors", "About the authors" gibi
+12-17 karakterlik başlıklar). Daha önce düzeltilen **kontrol karakteri** hatasıyla birebir
+aynı sınıf; o zaman eksik olan `strip_control_chars`'tı, bu sefer XML kaçışlaması.
+
+**Çözüm** — `src/translators/protect.py`:
+
+* `escape_markup` (yeni): `&`, `<`, `>` → `&amp;`, `&lt;`, `&gt;`. `protect(..., "xml")`
+  yalnız **yer tutucuların arasındaki** metni kaçışlıyor; `<x id="n"/>` yer tutucuları
+  gerçek etiket, onlar kaçışlanmıyor. Korunan span'ın kendi içeriği (örn. `` `a < b` ``)
+  hiç tele çıkmıyor, ham hâliyle haritada duruyor.
+* `unescape_markup` (yeni): **tam olarak bir seviye** çözüyor. `re.sub` yazdığını yeniden
+  taramadığı için `&amp;lt;` → `&lt;` oluyor, `<` değil. Düz `html.unescape` iki seviyeyi
+  birden çökertir ve HTML anlatan bir kitabı bozardı. Sağlayıcının kendi eklediği
+  referanslar (Google apostrof için `&#39;` döndürüyor) aynı geçişte çözülüyor.
+* `restore` / `restore_lenient` artık `mode` parametresi alıyor. Neden zorunlu: yer tutucu
+  yoksa harita boş kalıyor ve kipi tahmin etmenin yolu yok — `<opencv_build_folder>` içeren
+  birimlerin çoğunda harita boş.
+* `_replace_all` tek bir `re.split` ile çalışıyor: tek indeksler yer tutucu (orijinaliyle
+  değiştirilir, **kaçış çözülmez**), çift indeksler metin (kaçışı çözülür). İki adım iç içe
+  olmak zorunda; yazarın gerçekten yazdığı bir `<x id="1"/>` böylece `&lt;x id="1"/&gt;`
+  olarak yolculuk edip metin olarak kalıyor, yer tutucu sanılmıyor.
+* `mode="sentinel"` yolu etkilenmedi (o XML kullanmıyor) — testle sabit.
+
+**İkinci 400 kaynağı (aynı hata, başka yer):** `deepl_translator.py` context penceresini
+(`extra["context"]`) `protect`'ten geçirmiyor ama DeepL onu da XML olarak ayrıştırıyor.
+Overlay batch'lerinde context = sayfa metni, yani içinde `<` olma olasılığı yüksek. Artık
+o da `escape_markup`'tan geçiyor.
+
+**Google (`google_translate.py`):** `format=html` gönderiyor, cevabı HTML-kaçışlı dönüyordu
+ve kod hepsini `html.unescape` ile çözüyordu. `restore` da çözünce bu **çift çözme** olurdu
+(kitabın literal `&amp;`'i çıplak `&`'e dönerdi). Yeni `_unescape_answer` kipe bakıyor:
+`"xml"` kipinde yalnız Google'ın kendi eklediklerini (`&#39;`, `&quot;`) çözüyor,
+`&amp;/&lt;/&gt;` `restore`'a kalıyor; `"sentinel"` kipinde (yalnız google+local
+yedeklemesinde oluşur) eskisi gibi hepsini çözüyor. Kipi taşımak için
+`TranslationRequest.protect_mode` alanı eklendi (`base.py`), orkestratör `ctx.mode`'u
+geçiriyor.
+
+**Kanıt (gerçek verinin üstünde, sahte istemciyle):** 65 birimin `source_text`'i salt okunur
+okundu.
+
+```
+units read: 65
+unparsable before the fix: 22/65   (kalan 43'ü aynı batch'te oldukları için düştü)
+unparsable after the fix : 0
+lossy round trips        : 0
+ham yük        -> Err PROVIDER_BAD_REQUEST | DeepL rejected the request (HTTP 400)
+korunmuş yük   -> Ok, 65 metin geri geldi
+restore        : 65/65 temiz, 65/65 kaynakla birebir aynı
+```
+
+Sahte istemci gerçek `tag_handling="xml"` gibi davranıyor: yükü ayrıştırıyor, ayrıştıramazsa
+`http_status_code=400` ile **tüm batch'i** düşürüyor. Yani "önce" satırı gerçek hatayı
+birebir yeniden üretiyor.
+
+### 2. HTTP 429 — hız sınırı kalıcı hata sayılıyordu
+
+2066 birim "retries exhausted after 6 attempts" ile **kalıcı FAILED** oldu. Bu yanlış:
+`max_retries` sağlayıcının **reddettiği** bir birimi durdurmak için var, 429 ise reddetme
+değil, "şimdi değil". Üstüne, full jitter `[0, tavan]` aralığından çekiyor — yani altı
+denemenin tamamı saniyeler içinde, gerçekten beklemeden tükenebiliyor. `AdaptiveLimiter`
+izinleri 4→2→1'e indirmişti ama 1'de yarıya bölmek bir şey yapmıyor.
+
+**Çözüm:**
+
+* **Ayrı bütçe.** `BackoffPolicy.rate_limit_max_retries` (varsayılan 20) ve
+  `can_retry_rate_limited`. 429 artık `max_retries`'i harcamıyor.
+* **Kalıcı sayaç kirlenmiyor.** `repository.reschedule(..., bump_retry=False)`: 429 yüzünden
+  yeniden planlanan birimin `retry_count`'u artmıyor. Böylece 20 kez throttle yemiş bir
+  birim, sonrasında gelen ilk gerçek 5xx'te ölmüyor; resume edilen iş de bütçesini tam
+  buluyor. Görünen deneme numarası kaybolmasın diye `_attempts_so_far` = `retry_count` +
+  bu koşudaki 429 sayısı (`orchestrator.py`).
+* **Bütçe biterse FAILED değil PAUSED.** `_handle_rate_limit` bütçe dolunca işi mevcut
+  duraklatma yolundan (`_pause`) durduruyor: birim `PENDING` kalıyor, iş `PAUSED`, çıkış
+  kodu 3, `resume` kaldığı yerden devam ediyor. 2000 birimi kalıcı çöpe atmak yerine.
+* **Jitter'ın altına taban.** `compute_delay(..., floor_s=...)` ve
+  `rate_limit_min_delay_s` (varsayılan 5 sn). Taban `cap_s`'i asla aşamıyor; `Retry-After`
+  daha büyükse o kazanıyor.
+* **Havuz geneli soğuma.** `AdaptiveLimiter(cool_off_s=...)` — 429'dan sonra o süre boyunca
+  **hiçbir** yeni istek çıkmıyor. İzinleri yarıya bölmek 1'e inince işe yaramıyordu; bu
+  fren, zaten claim edilmiş diğer batch'lerin aynı duvara yürümesini engelliyor
+  (varsayılan 5 sn, `rate_limit_cool_off_s`).
+* **`concurrency` varsayılanı 4'te bırakıldı.** Gerekçe: bu bir tavan, hedef değil —
+  limiter her 429'da yarıya bölüyor, 20 temiz çağrıdan sonra birer birer büyütüyor.
+  Varsayılanı düşürmek, ücretsiz katmanın semptomunu çözmek için her ücretli koşuyu kalıcı
+  yavaşlatmak olurdu. README'de ücretsiz katman için `--concurrency 2` öneriliyor.
+
+### Test
+
+`pytest -q` **878 passed / 1 skipped** (önce 859/1; 19 yeni test), `mypy src` ve
+`ruff check src tests` temiz.
+
+Yeni testler: XML kipinde yükün her zaman ayrıştırılabilir olması (gerçek koşudan alınmış
+beş metinle), yer tutucu dışına kaçışlama, tek seviye kaçış/çözme (`&amp;amp;` çıkmıyor),
+kaynakta literal yer tutucu, sentinel kipinin kaçışlamaması, DeepL yükünde çıplak `<`
+kalmaması, context penceresinin kaçışlanması, Google'ın kipe göre çözmesi; 429'un birimi
+asla FAILED yapmaması ve bütçe bitince PAUSED + resume, jitter tabanı, havuz soğuması,
+iki bütçenin ayrılığı. Hypothesis round-trip özelliği `&` ve `;` ile genişletildi ve her
+örnekte yükün XML olarak ayrıştırılabildiğini de doğruluyor.
+
+### Çözülmeyenler
+
+* **Canlı istek yok.** Kullanıcı yasağı gereği hiçbir sağlayıcıya tek karakter gidilmedi;
+  tüm kanıt sahte istemci üzerinden. `rate_limit_max_retries=20` / `min_delay=5s` /
+  `cool_off=5s` üçlüsünün DeepL ücretsiz katmanında yeterli olup olmadığı ancak gerçek bir
+  koşuda görülür.
+* Yarıda kalan iş (`web-jobs/1c2fbfaef4e9234e/`) olduğu gibi duruyor; bu görevde
+  veritabanına yazılmadı. 2131 FAILED birimi yeniden denemek için mevcut `reset_failed`
+  yolu kullanılmalı.
+* 429 sayacı bellekte; aynı koşu içinde geçerli. Kalıcı olsaydı bir sütun gerekirdi ve
+  "sağlayıcı bir saat önce meşguldü" bilgisi resume'da zaten değerini yitiriyor.
+* Sağlayıcı yer tutucu etiketini kaçışlayarak döndürürse (`&lt;x id="1"/&gt;`) yer tutucu
+  tanınmıyor; birim `PROVIDER_EMPTY_RESPONSE` ile yeniden denenip lenient restore'a düşer.
+  Bilerek: bunu hoş görmek, kaynakta literal yazılmış bir `<x id="1"/>`'i yer tutucu sanma
+  riskini geri getirirdi. DeepL `ignore_tags` ile gerçek etiket döndürüyor.

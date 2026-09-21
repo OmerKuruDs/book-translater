@@ -6,6 +6,7 @@ import asyncio
 import json
 import logging
 import os
+import random
 import socket
 import time
 from contextlib import contextmanager
@@ -46,6 +47,7 @@ from book_translator.domain.result import (
 )
 from book_translator.exporters.base import get_exporter
 from book_translator.extractors.base import BaseExtractor, ExtractOptions
+from book_translator.pipeline.backoff import AdaptiveLimiter
 from book_translator.pipeline.orchestrator import (
     EXIT_FAILURE,
     EXIT_INTERRUPTED,
@@ -276,7 +278,9 @@ async def test_rate_limit_reschedules_and_backoff_survives_restart(tmp_path: Pat
     assert summary.exit_code == EXIT_SUCCESS  # nothing failed; chunk 1 is waiting
     row = chunk_rows(ws)[1]
     assert row.status is ChunkStatus.PENDING
-    assert row.retry_count == 1
+    # a 429 never spends the stored retry budget - that one is for errors the unit
+    # itself causes, and "slow down" is not one of them
+    assert row.retry_count == 0
     assert row.next_attempt_at is not None and row.next_attempt_at >= start + timedelta(seconds=7)
     assert row.last_error and "429" in row.last_error
     assert fake.calls == [(1, 1, ["Paragraph 1 of the synthetic book."])]
@@ -293,10 +297,10 @@ async def test_rate_limit_reschedules_and_backoff_survives_restart(tmp_path: Pat
         (row.next_attempt_at - (start + timedelta(seconds=3))).total_seconds()
     )
     assert later.now >= row.next_attempt_at
-    assert (1, 2, ["Paragraph 1 of the synthetic book."]) in fake.calls
+    assert len([c for c in fake.calls if c[0] == 1]) == 2  # the chunk was tried again
     rows = chunk_rows(ws)
     assert all(c.status is ChunkStatus.COMPLETED for c in rows.values())
-    assert rows[1].retry_count == 1
+    assert rows[1].retry_count == 0
 
 
 async def test_retries_exhausted_marks_failed_and_job_continues(tmp_path: Path) -> None:
@@ -338,6 +342,91 @@ async def test_job_fatal_pauses_job_and_releases_chunk(tmp_path: Path, outcome: 
     assert len(fake.calls) == 1
     assert job_row(ws)["status"] == "PAUSED"
     assert run_rows(ws) == [("translate", "PAUSED", 3)]
+
+
+class AlwaysRateLimited(FakeTranslator):
+    """A provider that says "slow down" and never stops saying it."""
+
+    def _next_outcome(self, chunk_id: int) -> Any:
+        return "err_429"
+
+
+async def test_rate_limit_never_fails_a_unit_and_pauses_instead(tmp_path: Path) -> None:
+    """The 364-page regression: 2066 units died as FAILED on HTTP 429 alone.
+
+    A rate limit is the provider asking for time, so it may not consume the failure budget
+    (``max_retries=0`` here proves the two budgets are separate) and it may not end as
+    FAILED. When even the rate-limit budget is spent the *job* stops, with every unit still
+    PENDING and its retry count untouched, ready for ``resume``.
+    """
+    md, chunks = paragraphs(1)
+    ws = make_workspace(tmp_path, md)
+    seed(ws, chunks)
+    fake = AlwaysRateLimited()
+    orch, clock = build(
+        ws,
+        fake,
+        settings=make_settings(concurrency=1, max_retries=0, rate_limit_max_retries=3),
+    )
+
+    summary = unwrap(await orch.translate(ws.input_pdf))
+
+    assert summary.exit_code == EXIT_PAUSED
+    assert any("rate limited after 3 waits" in w for w in summary.warnings)
+    assert len(fake.calls) == 4  # the first call plus the three waits of the budget
+    assert [attempt for _, attempt, _ in fake.calls] == [1, 2, 3, 4]
+    rows = chunk_rows(ws)
+    assert rows[1].status is ChunkStatus.PENDING  # never FAILED
+    assert rows[1].retry_count == 0  # the failure budget was never touched
+    assert job_row(ws)["status"] == "PAUSED"
+    assert len(clock.sleeps) == 3
+
+    # resume: the work is intact, a provider that answers finishes the job
+    orch2, _ = build(ws, FakeTranslator(), run_id="run000000002")
+    summary2 = unwrap(await orch2.translate(ws.input_pdf))
+
+    assert summary2.exit_code == EXIT_SUCCESS
+    assert all(c.status is ChunkStatus.COMPLETED for c in chunk_rows(ws).values())
+
+
+async def test_rate_limit_backoff_has_a_floor_under_the_jitter(tmp_path: Path) -> None:
+    """Full jitter draws from ``[0, ceiling]``; without a floor a 429 retries at once."""
+    md, chunks = paragraphs(1)
+    ws = make_workspace(tmp_path, md)
+    seed(ws, chunks)
+    orch, clock = build(
+        ws,
+        FakeTranslator({1: ["err_429", "err_429"]}),
+        settings=make_settings(concurrency=1, rate_limit_min_delay_s=4.0),
+        rng=random.Random(1),  # a real rng: the draws are small, the floor is not
+    )
+
+    summary = unwrap(await orch.translate(ws.input_pdf))
+
+    assert summary.exit_code == EXIT_SUCCESS
+    assert len(clock.sleeps) == 2 and all(delay >= 4.0 for delay in clock.sleeps)
+
+
+async def test_rate_limit_cools_the_whole_pool_off(tmp_path: Path) -> None:
+    """Halving permits stops helping at 1; the cool-off is what holds the pool back."""
+    limiter = AdaptiveLimiter(4, now=lambda: 100.0, cool_off_s=7.0)
+    assert limiter.permits == 4
+    await limiter.acquire()  # nothing to wait for yet
+    limiter.release()
+
+    limiter.on_rate_limited()
+
+    slept: List[float] = []
+
+    async def record(seconds: float) -> None:
+        slept.append(seconds)
+        limiter._cool_off_until = float("-inf")  # the clock is frozen; end the wait
+
+    limiter._sleep = record  # type: ignore[assignment]
+    await limiter.acquire()
+    limiter.release()
+    assert slept == [7.0]
+    assert limiter.permits == 2
 
 
 async def test_bad_request_fails_immediately(tmp_path: Path) -> None:
@@ -2266,9 +2355,16 @@ class FirstCallRateLimited(FakeTranslator):
 class RescheduleRecorder(CountingOverlayRepository):
     whens: List[Any] = []
 
-    def reschedule(self, job_id: str, unit_id: int, error: AppError, when: Any) -> Result[bool]:
+    def reschedule(
+        self,
+        job_id: str,
+        unit_id: int,
+        error: AppError,
+        when: Any,
+        bump_retry: bool = True,
+    ) -> Result[bool]:
         RescheduleRecorder.whens.append(when)
-        return super().reschedule(job_id, unit_id, error, when)
+        return super().reschedule(job_id, unit_id, error, when, bump_retry)
 
 
 async def test_a_429_on_a_ten_unit_batch_costs_exactly_one_more_call(
@@ -2293,7 +2389,8 @@ async def test_a_429_on_a_ten_unit_batch_costs_exactly_one_more_call(
         assert raw_rows(db, "SELECT provider_calls, rate_limited_count FROM runs") == [(2, 1)]
     finally:
         close_database(db)
-    assert all(u.retry_count == 1 for u in overlay_units(ws).values())
+    # the 429 is counted in the attempt number (2) but not in the stored retry budget
+    assert all(u.retry_count == 0 for u in overlay_units(ws).values())
 
 
 class AbortOnFirstComplete(CountingOverlayRepository):

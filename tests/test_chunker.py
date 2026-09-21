@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import dataclasses
+import xml.etree.ElementTree as ET
 from typing import List, Tuple
 
 import pytest
@@ -33,7 +34,13 @@ from book_translator.pipeline.chunker import (
     parse_blocks,
 )
 from book_translator.pipeline.segmenter import reassemble, segment
-from book_translator.translators.protect import protect, restore, restore_lenient
+from book_translator.translators.protect import (
+    escape_markup,
+    protect,
+    restore,
+    restore_lenient,
+    unescape_markup,
+)
 
 # --------------------------------------------------------------------------- #
 # helpers
@@ -560,22 +567,27 @@ def test_protect_masks_code_urls_links_and_restores(mode: str) -> None:
         assert '<x id="1"/>' in masked
     else:
         assert "⟦1⟧" in masked
-    assert unwrap(restore(masked, mapping)) == PROTECT_SAMPLE
-    assert unwrap(restore("çeviri " + masked, mapping)) == "çeviri " + PROTECT_SAMPLE
+    assert unwrap(restore(masked, mapping, mode)) == PROTECT_SAMPLE  # type: ignore[arg-type]
+    assert (
+        unwrap(restore("çeviri " + masked, mapping, mode))  # type: ignore[arg-type]
+        == "çeviri " + PROTECT_SAMPLE
+    )
 
 
 def test_restore_detects_missing_and_duplicated_placeholders() -> None:
     masked, mapping = protect("See `a` and `b`.", "sentinel")
-    missing = restore(masked.replace("⟦2⟧", ""), mapping)
+    missing = restore(masked.replace("⟦2⟧", ""), mapping, "sentinel")
     assert isinstance(missing, Err)
     assert missing.error.code == ErrorCode.PROVIDER_EMPTY_RESPONSE
-    duplicated = restore(masked + " ⟦1⟧", mapping)
+    duplicated = restore(masked + " ⟦1⟧", mapping, "sentinel")
     assert isinstance(duplicated, Err)
 
 
 def test_restore_lenient_appends_missing_and_reports() -> None:
     masked, mapping = protect("See `a` and `b`.", "sentinel")
-    text, warnings = restore_lenient(masked.replace("⟦2⟧", "").replace("⟦1⟧", "⟦1⟧ ⟦1⟧"), mapping)
+    text, warnings = restore_lenient(
+        masked.replace("⟦2⟧", "").replace("⟦1⟧", "⟦1⟧ ⟦1⟧"), mapping, "sentinel"
+    )
     assert warnings == ["placeholder_duplicated:1", "placeholder_missing:2"]
     assert text.endswith("`b`") and text.count("`a`") == 2
 
@@ -583,24 +595,94 @@ def test_restore_lenient_appends_missing_and_reports() -> None:
 def test_restore_tolerates_xml_tag_variants() -> None:
     masked, mapping = protect("Run `ls` now.", "xml")
     variant = masked.replace('<x id="1"/>', "<x id='1'></x>")
-    assert unwrap(restore(variant, mapping)) == "Run `ls` now."
+    assert unwrap(restore(variant, mapping, "xml")) == "Run `ls` now."
 
 
 def test_protect_no_spans_is_identity() -> None:
     text = "Sadece düz metin."
     masked, mapping = protect(text, "xml")
     assert masked == text and mapping == {}
-    assert isinstance(restore(masked, mapping), Ok)
+    assert isinstance(restore(masked, mapping, "xml"), Ok)
 
 
-@given(st.text(alphabet=_LETTERS + " `[]()<>:/.⟦⟧", max_size=80))
-@settings(max_examples=100, deadline=None)
+@given(st.text(alphabet=_LETTERS + " `[]()<>&;:/.⟦⟧", max_size=80))
+@settings(max_examples=200, deadline=None)
 def test_protect_restore_round_trip_property(text: str) -> None:
     for mode in ("xml", "sentinel"):
         masked, mapping = protect(text, mode)  # type: ignore[arg-type]
-        assert unwrap(restore(masked, mapping)) == text
-        lenient, warnings = restore_lenient(masked, mapping)
+        assert unwrap(restore(masked, mapping, mode)) == text  # type: ignore[arg-type]
+        lenient, warnings = restore_lenient(masked, mapping, mode)  # type: ignore[arg-type]
         assert lenient == text and warnings == []
+        if mode == "xml":
+            ET.fromstring(f"<d>{masked}</d>")  # the payload is always well-formed XML
+
+
+# --------------------------------------------------------------------------- #
+# XML escaping in the "xml" protect mode (HTTP 400 on a bare "<")
+# --------------------------------------------------------------------------- #
+
+# Verbatim from the 364-page run: every one of these made DeepL answer HTTP 400 and took
+# the whole batch down with it ("Contributors", "Running samples" and 41 more innocents).
+XML_HOSTILE = [
+    "5. CMake will have generated a Visual Studio solution file at "
+    "<opencv_build_folder>/OpenCV.sln. Open it in Visual Studio.",
+    "Unzip this file to any destination folder, which we will refer to as "
+    "<opencv_contrib_unzip_destination>.",
+    "Joe Minichino is an R&D labs engineer at Teamwork.",
+    "The loop runs while a < b and stops when a > b.",
+    "Tom & Jerry <-> cat & mouse",
+]
+
+
+@pytest.mark.parametrize("text", XML_HOSTILE)
+def test_xml_mode_payload_is_well_formed_and_round_trips(text: str) -> None:
+    masked, mapping = protect(text, "xml")
+    ET.fromstring(f"<d>{masked}</d>")  # would raise ParseError before the escaping
+    assert "&" not in masked.replace("&amp;", "").replace("&lt;", "").replace("&gt;", "")
+    assert unwrap(restore(masked, mapping, "xml")) == text
+
+
+def test_xml_mode_escapes_only_outside_placeholders() -> None:
+    masked, mapping = protect("Run `a < b` when x < y & z.", "xml")
+    assert masked == 'Run <x id="1"/> when x &lt; y &amp; z.'
+    assert mapping == {'<x id="1"/>': "`a < b`"}  # the span itself stays unescaped
+    assert unwrap(restore(masked, mapping, "xml")) == "Run `a < b` when x < y & z."
+
+
+def test_sentinel_mode_does_not_escape() -> None:
+    masked, mapping = protect("x < y & z", "sentinel")
+    assert masked == "x < y & z" and mapping == {}
+    assert unwrap(restore(masked, mapping, "sentinel")) == "x < y & z"
+
+
+def test_escaping_is_exactly_one_level() -> None:
+    """A book that quotes HTML keeps its entities: no ``&amp;amp;`` and no bare ``&``."""
+    text = "Write &amp; for & and &lt; for <."
+    masked, _ = protect(text, "xml")
+    assert masked == "Write &amp;amp; for &amp; and &amp;lt; for &lt;."
+    assert unescape_markup(masked) == text
+    assert unwrap(restore(masked, {}, "xml")) == text
+
+
+def test_restore_does_not_resolve_a_literal_placeholder_in_the_source() -> None:
+    """``<x id="1"/>`` written by the author travels escaped and stays text."""
+    masked, mapping = protect('The tag <x id="1"/> and `code`.', "xml")
+    assert masked == 'The tag &lt;x id="1"/&gt; and <x id="1"/>.'
+    assert unwrap(restore(masked, mapping, "xml")) == 'The tag <x id="1"/> and `code`.'
+
+
+def test_unescape_markup_resolves_provider_added_references_once() -> None:
+    assert unescape_markup("it&#39;s") == "it's"
+    assert unescape_markup("&amp;lt;") == "&lt;"
+    assert unescape_markup("&amp;#39;") == "&#39;"
+    assert escape_markup("&<>") == "&amp;&lt;&gt;"
+
+
+def test_restore_lenient_unescapes_too() -> None:
+    masked, mapping = protect("See `a` when x < y.", "xml")
+    text, warnings = restore_lenient(masked.replace('<x id="1"/>', ""), mapping, "xml")
+    assert warnings == ["placeholder_missing:1"]
+    assert text == "See  when x < y. `a`"
 
 
 # --------------------------------------------------------------------------- #

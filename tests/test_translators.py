@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import dataclasses
 import random
+import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple
@@ -48,11 +49,19 @@ from book_translator.translators.fallback import FallbackResponse, FallbackTrans
 from book_translator.translators.google_translate import ENDPOINT, GoogleTranslator
 from book_translator.translators.llm_base import MAX_PROMPT_TERMS, BaseLLMTranslator, build_prompt
 from book_translator.translators.local_nmt import LocalNMTTranslator, apply_post_replace
+from book_translator.translators.protect import protect, restore
 from tests.conftest import DEFAULT_CAPABILITIES, FakeTranslator, Outcome
 
 # --------------------------------------------------------------------------- #
 # helpers
 # --------------------------------------------------------------------------- #
+
+
+class ZeroRng(random.Random):
+    """``uniform`` always returns the lower bound (the worst case for full jitter)."""
+
+    def uniform(self, a: float, b: float) -> float:
+        return a
 
 
 class MaxRng(random.Random):
@@ -98,6 +107,7 @@ class FakeGlossaryInfo:
     glossary_id: str
     name: str
     ready: bool
+    entry_count: int = 0
 
 
 class FakeDeepLClient:
@@ -108,6 +118,9 @@ class FakeDeepLClient:
         self.calls: List[Dict[str, Any]] = []
         self.glossaries: List[FakeGlossaryInfo] = []
         self.created: List[Dict[str, Any]] = []
+        self.deleted: List[str] = []
+        self.create_exc: Optional[BaseException] = None  # raised by ``create_glossary`` only
+        self.delete_exc: Dict[str, BaseException] = {}  # glossary_id -> failure
         self.responder: Optional[Any] = None
         self.closed = False
 
@@ -129,7 +142,16 @@ class FakeDeepLClient:
     ) -> FakeGlossaryInfo:
         self.created.append({"name": name, "source": source_lang, "target": target_lang,
                              "entries": entries})
-        return FakeGlossaryInfo("g-new", name, True)
+        if self.create_exc is not None:
+            raise self.create_exc
+        return FakeGlossaryInfo("g-new", name, True, len(entries))
+
+    def delete_glossary(self, glossary_id: str) -> None:
+        failure = self.delete_exc.get(glossary_id)
+        if failure is not None:
+            raise failure
+        self.deleted.append(glossary_id)
+        self.glossaries = [g for g in self.glossaries if g.glossary_id != glossary_id]
 
     def close(self) -> None:
         self.closed = True
@@ -145,6 +167,31 @@ def make_deepl(client: FakeDeepLClient) -> DeepLTranslator:
 # --------------------------------------------------------------------------- #
 # 5.4 backoff
 # --------------------------------------------------------------------------- #
+
+
+def test_compute_delay_floor_lifts_the_jitter() -> None:
+    """Full jitter can draw ~0; under a rate limit that spends a retry without waiting."""
+    kw = dict(base_s=2.0, factor=2.0, cap_s=60.0, retry_after_s=None, rng=ZeroRng())
+    assert compute_delay(0, **kw) == 0.0  # type: ignore[arg-type]
+    assert compute_delay(0, floor_s=5.0, **kw) == 5.0  # type: ignore[arg-type]
+    # the floor never pushes a wait past the ceiling of the policy
+    assert compute_delay(0, floor_s=900.0, **kw) == 60.0  # type: ignore[arg-type]
+    # Retry-After still wins when it asks for more
+    assert compute_delay(
+        0, base_s=2.0, factor=2.0, cap_s=60.0, retry_after_s=30.0, floor_s=5.0, rng=ZeroRng()
+    ) == 30.0
+
+
+def test_rate_limit_budget_is_separate_from_the_failure_budget() -> None:
+    policy = BackoffPolicy(max_retries=5, rate_limit_max_retries=20)
+    assert policy.can_retry(4) and not policy.can_retry(5)
+    assert policy.can_retry_rate_limited(19) and not policy.can_retry_rate_limited(20)
+    # the rate-limit delay carries the floor, the ordinary one does not
+    floored = BackoffPolicy(
+        base_s=2.0, cap_s=60.0, rate_limit_min_delay_s=9.0, rng=ZeroRng()
+    )
+    assert floored.next_delay(0) == 0.0
+    assert floored.next_rate_limit_delay(0) == 9.0
 
 
 def test_compute_delay_exponential_with_full_jitter() -> None:
@@ -498,6 +545,192 @@ async def test_a_glossary_of_only_identity_entries_still_binds() -> None:
     }
 
 
+# --------------------------------------------------------------------------- #
+# HTTP 456 means two different things (measured on a 484k/1M account)
+# --------------------------------------------------------------------------- #
+
+TOO_MANY_GLOSSARIES = (  # the exact text DeepL answered with
+    "Quota for this billing period has been exceeded, message: Too many glossaries"
+)
+
+
+def quota_exc(message: str) -> deepl_exc.QuotaExceededException:
+    return deepl_exc.QuotaExceededException(message, http_status_code=456)
+
+
+def test_deepl_glossary_limit_is_not_reported_as_a_character_quota() -> None:
+    """The account was at 484 353/1 000 000 characters; only the glossary count was full."""
+    error = classify_deepl_exception(quota_exc(TOO_MANY_GLOSSARIES))
+
+    assert error.code is ErrorCode.PROVIDER_GLOSSARY_LIMIT
+    # PROVIDER_QUOTA would arm the automatic fallback: paying a second provider because a
+    # glossary slot is missing is the wrong move (translators/fallback.py).
+    assert error.code is not ErrorCode.PROVIDER_QUOTA
+    assert error.scope is ErrorScope.USER  # the user can fix it right now
+    assert "character quota exhausted" not in error.message
+    assert "wait for the next period" not in error.message
+    assert "Delete an existing glossary" in error.message
+    assert "--cleanup-remote" in error.message
+    assert error.context["http_status"] == 456
+
+
+@pytest.mark.parametrize(
+    "message",
+    [
+        "Quota for this billing period has been exceeded",
+        "quota exceeded",
+        "456",
+    ],
+)
+def test_deepl_quota_without_a_glossary_word_keeps_the_character_reading(message: str) -> None:
+    """DeepL may reword its text; anything that does not mention glossaries stays as it was."""
+    error = classify_deepl_exception(quota_exc(message))
+
+    assert error.code is ErrorCode.PROVIDER_QUOTA
+    assert error.scope is ErrorScope.JOB_FATAL
+    assert "character quota exhausted for this billing period" in error.message
+
+
+def test_deepl_glossary_wording_is_matched_case_insensitively() -> None:
+    error = classify_deepl_exception(quota_exc("Too Many GLOSSARIES for this account"))
+    assert error.code is ErrorCode.PROVIDER_GLOSSARY_LIMIT
+
+
+async def test_deepl_prepare_says_delete_a_glossary_not_wait_for_the_quota() -> None:
+    """The message the user actually saw: a bind failure that told them to wait."""
+    client = FakeDeepLClient()
+    client.create_exc = quota_exc(TOO_MANY_GLOSSARIES)
+
+    result = await make_deepl(client).prepare(glossary(("A", "B")), "run")
+
+    assert isinstance(result, Err)
+    assert result.error.code is ErrorCode.GLOSSARY_BIND_FAILED
+    assert "Delete an existing glossary" in result.error.message
+    assert "--cleanup-remote" in result.error.message
+    assert "wait for the next period" not in result.error.message
+
+
+# --------------------------------------------------------------------------- #
+# --cleanup-remote: provider-side glossary administration
+# --------------------------------------------------------------------------- #
+
+
+def stocked_client() -> FakeDeepLClient:
+    """Two stale tool glossaries, the current one, and two the user made themselves."""
+    client = FakeDeepLClient()
+    client.glossaries = [
+        FakeGlossaryInfo("g-old1", glossary_name_for("a" * 64), True, 807),
+        FakeGlossaryInfo("g-mine", "ai-ml terms", True, 12),
+        FakeGlossaryInfo("g-current", glossary_name_for("h" * 64), True, 3),
+        FakeGlossaryInfo("g-old2", glossary_name_for("b" * 64), True, 40),
+        FakeGlossaryInfo("g-theirs", "book-translator (manual copy)", True, 1),
+    ]
+    return client
+
+
+async def test_cleanup_deletes_only_the_tools_own_stale_glossaries() -> None:
+    client = stocked_client()
+
+    cleanup = unwrap(await make_deepl(client).cleanup_glossaries(keep_hash="h" * 64))
+
+    assert client.deleted == ["g-old1", "g-old2"]  # nothing else was touched
+    assert [(g.name, g.entries) for g in cleanup.deleted] == [
+        (glossary_name_for("a" * 64), 807),
+        (glossary_name_for("b" * 64), 40),
+    ]
+    assert cleanup.kept_current == glossary_name_for("h" * 64)
+    assert cleanup.kept_foreign == 2  # "ai-ml terms" and the manually named one
+    assert cleanup.failed == ()
+    assert cleanup.supported is True
+
+
+async def test_cleanup_never_deletes_a_glossary_the_user_made() -> None:
+    """The safety rule: a name without the tool's prefix is off limits, whatever it says."""
+    client = FakeDeepLClient()
+    client.glossaries = [
+        FakeGlossaryInfo("g-1", "book-translator", True, 5),  # prefix without the colon
+        FakeGlossaryInfo("g-2", "Book-Translator:abc", True, 5),  # different case
+        FakeGlossaryInfo("g-3", "my book-translator:abc", True, 5),  # prefix not at the start
+        FakeGlossaryInfo("g-4", "book-translator:", True, 5),  # prefix, but no hash
+    ]
+
+    cleanup = unwrap(await make_deepl(client).cleanup_glossaries(keep_hash="h" * 64))
+
+    assert client.deleted == []
+    assert cleanup.deleted == () and cleanup.kept_foreign == 4
+
+
+async def test_cleanup_without_a_current_hash_still_spares_foreign_glossaries() -> None:
+    client = stocked_client()
+
+    cleanup = unwrap(await make_deepl(client).cleanup_glossaries(keep_hash=None))
+
+    assert client.deleted == ["g-old1", "g-current", "g-old2"]
+    assert cleanup.kept_current is None and cleanup.kept_foreign == 2
+
+
+async def test_cleanup_reports_when_there_was_nothing_to_delete() -> None:
+    client = FakeDeepLClient()
+    client.glossaries = [
+        FakeGlossaryInfo("g-current", glossary_name_for("h" * 64), True, 3),
+        FakeGlossaryInfo("g-mine", "ai-ml terms", True, 12),
+    ]
+
+    cleanup = unwrap(await make_deepl(client).cleanup_glossaries(keep_hash="h" * 64))
+
+    assert cleanup.deleted == () and client.deleted == []
+    assert cleanup.kept_current == glossary_name_for("h" * 64) and cleanup.kept_foreign == 1
+
+
+async def test_cleanup_reports_a_failed_delete_and_carries_on() -> None:
+    client = stocked_client()
+    client.delete_exc["g-old1"] = deepl_exc.DeepLException("locked", http_status_code=400)
+
+    cleanup = unwrap(await make_deepl(client).cleanup_glossaries(keep_hash="h" * 64))
+
+    assert client.deleted == ["g-old2"]
+    assert [g.name for g in cleanup.deleted] == [glossary_name_for("b" * 64)]
+    assert len(cleanup.failed) == 1
+    assert cleanup.failed[0].startswith(glossary_name_for("a" * 64) + ": ")
+    assert "HTTP 400" in cleanup.failed[0]
+
+
+async def test_cleanup_fails_cleanly_when_the_listing_fails() -> None:
+    client = FakeDeepLClient(raise_exc=deepl_exc.AuthorizationException("403",
+                                                                       http_status_code=403))
+
+    result = await make_deepl(client).cleanup_glossaries(keep_hash="h" * 64)
+
+    assert isinstance(result, Err)
+    assert result.error.code is ErrorCode.PROVIDER_AUTH
+    assert client.deleted == []
+
+
+async def test_cleanup_is_a_no_op_for_a_provider_without_provider_side_glossaries() -> None:
+    """``local``/``google``: the command says so instead of pretending it deleted something."""
+    client = FakeHttpClient([])
+    google = make_google(client)
+    assert google.capabilities.supports_glossary is False
+
+    cleanup = unwrap(await google.cleanup_glossaries(keep_hash="h" * 64))
+
+    assert cleanup.supported is False
+    assert cleanup.provider == "google" and cleanup.deleted == ()
+    assert client.calls == []  # nothing was sent
+
+
+async def test_the_default_glossary_admin_methods_report_unsupported() -> None:
+    translator = FakeTranslator()
+    listed = await translator.list_provider_glossaries()
+    deleted = await translator.delete_provider_glossary("g-1")
+
+    assert isinstance(listed, Err) and isinstance(deleted, Err)
+    for error in (listed.error, deleted.error):
+        assert error.code is ErrorCode.PROVIDER_CONFIG
+        assert error.scope is ErrorScope.USER
+        assert "keeps no glossaries" in error.message
+
+
 async def test_deepl_prepare_failure_is_job_fatal() -> None:
     client = FakeDeepLClient(raise_exc=deepl_exc.DeepLException("boom", http_status_code=400))
     result = await make_deepl(client).prepare(glossary(("A", "B")), "run")
@@ -676,7 +909,7 @@ def test_control_characters_never_reach_the_provider() -> None:
     DeepL is called with ``tag_handling="xml"`` and rejects the whole request over a
     single one of them, so every unit of the batch fails - on a 48-page book that was
     194 failed units over the 20 that actually carried one."""
-    from book_translator.translators.protect import protect, strip_control_chars
+    from book_translator.translators.protect import strip_control_chars
 
     dirty = "Matrix" + chr(0x14) + " 1" + chr(0x15) + " with " + chr(0) + "a gap" + chr(1)
     assert strip_control_chars(dirty) == "Matrix 1 with a gap"
@@ -686,6 +919,54 @@ def test_control_characters_never_reach_the_provider() -> None:
     for mode in ("xml", "sentinel"):
         out, _mapping = protect(dirty, mode)
         assert not any(ord(c) < 0x20 and c not in plain for c in out)
+
+
+@pytest.mark.asyncio
+async def test_deepl_payload_carries_no_bare_angle_bracket() -> None:
+    """The real HTTP 400: ``<opencv_build_folder>`` is not a tag, it is prose.
+
+    ``tag_handling="xml"`` makes DeepL parse the request; an unclosed ``<...>`` rejects the
+    **whole** request, so 12-character headings such as "Contributors" failed for no other
+    reason than sharing a batch with it (65 units on the 364-page run).
+    """
+    client = FakeDeepLClient()
+    translator = make_deepl(client)
+    sources = [
+        "Contributors",
+        "CMake generated <opencv_build_folder>/OpenCV.sln; open it.",
+        "Joe Minichino is an R&D labs engineer at Teamwork.",
+    ]
+    payload, mappings = zip(*(protect(text, "xml") for text in sources), strict=True)
+
+    result = await translator.translate(list(payload), request())
+
+    assert isinstance(result, Ok)
+    sent = client.calls[0]["text"]
+    assert all("<" not in t.replace('<x id="', "") for t in sent)
+    for text in sent:
+        ET.fromstring(f"<d>{text}</d>")  # the request DeepL would have parsed
+    # the fake echoes the payload back the way the XML mode does: still escaped
+    answers = [t.removeprefix("TR:") for t in result.value.texts]
+    assert [
+        unwrap(restore(answer, mapping, "xml"))
+        for answer, mapping in zip(answers, mappings, strict=True)
+    ] == sources
+
+
+@pytest.mark.asyncio
+async def test_deepl_context_window_is_escaped_too() -> None:
+    """The page text of an overlay batch is parsed as XML as well - escape it."""
+    client = FakeDeepLClient()
+    translator = make_deepl(client)
+
+    result = await translator.translate(
+        ["metin"],
+        dataclasses.replace(request(), context="see <opencv_build_folder> & the README"),
+    )
+
+    assert isinstance(result, Ok)
+    assert client.calls[0]["context"] == "see &lt;opencv_build_folder&gt; &amp; the README"
+    ET.fromstring(f"<d>{client.calls[0]['context']}</d>")
 
 
 @pytest.mark.asyncio
@@ -801,9 +1082,15 @@ async def test_google_translates_a_batch_and_reports_what_it_sent() -> None:
     }
 
 
-async def test_google_unescapes_the_html_mode_answer() -> None:
-    """``format=html`` means the answer comes back HTML-escaped."""
-    escaped = "Kitab&#39;in &amp; kalemin &lt;x id=&quot;1&quot;/&gt;"
+async def test_google_unescapes_only_its_own_references_in_xml_mode() -> None:
+    """``format=html`` answers are escaped; only the part Google added is undone here.
+
+    The payload left this process already escaped (``protect(..., "xml")``), so
+    ``&amp;`` / ``&lt;`` / ``&gt;`` are handed on to ``restore``, which resolves exactly
+    one level. Undoing them twice would turn a book's literal ``&amp;`` into a bare ``&``.
+    ``&#39;`` and ``&quot;`` are Google's own doing and are resolved right here.
+    """
+    escaped = "Kitab&#39;in &amp; kalemin &lt;b&gt; ve &quot;tirnak&quot;"
     client = FakeHttpClient(
         [FakeHttpResponse(200, {"data": {"translations": [{"translatedText": escaped}]}})]
     )
@@ -811,7 +1098,28 @@ async def test_google_unescapes_the_html_mode_answer() -> None:
 
     response = unwrap(await translator.translate(["The book's & pen"], request()))
 
-    assert response.texts == ["Kitab'in & kalemin <x id=\"1\"/>"]
+    assert response.texts == ["Kitab'in &amp; kalemin &lt;b&gt; ve \"tirnak\""]
+    assert (
+        unwrap(restore(response.texts[0], {}, "xml"))
+        == "Kitab'in & kalemin <b> ve \"tirnak\""
+    )
+
+
+async def test_google_unescapes_everything_in_sentinel_mode() -> None:
+    """Without tag protection nothing was escaped on the way out, so all of it comes back."""
+    escaped = "Kitab&#39;in &amp; kalemi &lt;b&gt;"
+    client = FakeHttpClient(
+        [FakeHttpResponse(200, {"data": {"translations": [{"translatedText": escaped}]}})]
+    )
+    translator = make_google(client)
+
+    response = unwrap(
+        await translator.translate(
+            ["The book's & pen"], dataclasses.replace(request(), protect_mode="sentinel")
+        )
+    )
+
+    assert response.texts == ["Kitab'in & kalemi <b>"]
 
 
 async def test_google_quota_is_job_fatal() -> None:

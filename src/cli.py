@@ -79,7 +79,7 @@ from .pipeline.orchestrator import (
     exit_code_for,
     summary_to_jsonable,
 )
-from .translators.base import get_translator, list_translators
+from .translators.base import GlossaryCleanup, get_translator, list_translators
 
 __all__ = ["app", "main"]
 
@@ -269,7 +269,11 @@ GLOSSARY_OPTION = typer.Option(
     None, "--glossary", help="User glossary JSON; its entries win over glossary.json."
 )
 CLEANUP_REMOTE_OPTION = typer.Option(
-    False, "--cleanup-remote", help="Delete unreferenced provider glossaries (not implemented)."
+    False,
+    "--cleanup-remote",
+    help="Delete the provider-side glossaries this tool created earlier (DeepL caps how "
+    "many an account may hold). Keeps the current one and never touches a glossary you "
+    "created yourself. Deletion cannot be undone; the deleted names are printed.",
 )
 
 PROVIDER_OPTION = typer.Option(
@@ -728,6 +732,41 @@ def _warning_line(warning: str) -> str:
     return f"{label}: {warning}"
 
 
+def _cleanup_lines(cleanup: GlossaryCleanup) -> List[str]:
+    """Report a destructive step precisely: what went, what stayed, and why."""
+    if not cleanup.supported:
+        return [
+            f"--cleanup-remote: provider {cleanup.provider!r} keeps no glossaries on its "
+            "side; nothing to clean up"
+        ]
+    out: List[str] = []
+    if cleanup.deleted:
+        out.append(
+            f"--cleanup-remote: deleted {len(cleanup.deleted)} {cleanup.provider} "
+            f"{_glossaries(len(cleanup.deleted))} created by this tool:"
+        )
+        out.extend(f"  - {item.name} ({item.entries} entries)" for item in cleanup.deleted)
+    else:
+        out.append(
+            f"--cleanup-remote: deleted nothing; this tool has no other glossary on "
+            f"{cleanup.provider}"
+        )
+    kept: List[str] = []
+    if cleanup.kept_current is not None:
+        kept.append(f"{cleanup.kept_current} (the current one)")
+    if cleanup.kept_foreign:
+        kept.append(f"{cleanup.kept_foreign} {_glossaries(cleanup.kept_foreign)} not made by "
+                    "this tool")
+    if kept:
+        out.append("--cleanup-remote: kept " + ", ".join(kept))
+    out.extend(f"warning: could not delete {failure}" for failure in cleanup.failed)
+    return out
+
+
+def _glossaries(count: int) -> str:
+    return "glossary" if count == 1 else "glossaries"
+
+
 def _provider_units_lines(
     provider_units: Dict[str, int], primary: Optional[str] = None
 ) -> List[str]:
@@ -1168,6 +1207,17 @@ def glossary(
     result = _run_sync(
         lambda: orchestrator.glossary(min_count=min_count, force=force, user_glossary=glossary)
     )
+    if cleanup_remote and isinstance(result, Ok):
+        cleaned = _run_async(
+            orchestrator,
+            lambda: orchestrator.cleanup_remote_glossaries(
+                provider=settings.provider, user_glossary=glossary
+            ),
+        )
+        if isinstance(cleaned, Err):
+            _remember_job(common, orchestrator)
+            _fail(common, cleaned.error)
+        result = Ok(dataclasses.replace(result.value, cleanup=cleaned.value))
     _remember_job(common, orchestrator)
 
     def lines(outcome: GlossaryOutcome) -> List[str]:
@@ -1177,8 +1227,8 @@ def glossary(
             f"entries: {outcome.entries} (approved {outcome.approved}, proposed "
             f"{outcome.proposed}, ambiguous {outcome.ambiguous}, rejected {outcome.rejected})",
         ]
-        if cleanup_remote:
-            out.append("warning: --cleanup-remote is not implemented in this version")
+        if outcome.cleanup is not None:
+            out.extend(_cleanup_lines(outcome.cleanup))
         return out
 
     _finish_stage(common, result, lines)

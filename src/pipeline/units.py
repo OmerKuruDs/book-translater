@@ -115,7 +115,12 @@ class UnitRepository(Protocol[U]):
     def complete(self, job_id: str, unit_id: int, result: TranslationResult) -> Result[bool]: ...
 
     def reschedule(
-        self, job_id: str, unit_id: int, error: AppError, next_attempt_at: datetime
+        self,
+        job_id: str,
+        unit_id: int,
+        error: AppError,
+        next_attempt_at: datetime,
+        bump_retry: bool = True,
     ) -> Result[bool]: ...
 
     def fail(self, job_id: str, unit_id: int, error: AppError) -> Result[bool]: ...
@@ -250,6 +255,7 @@ def _restore_texts(
     texts: Sequence[str],
     mappings: Sequence[Dict[str, str]],
     occurrence: int,
+    mode: ProtectMode,
 ) -> Tuple[Optional[Err], List[str], List[str], bool]:
     """v1 empty/truncation/placeholder rule for the texts of one unit.
 
@@ -266,7 +272,7 @@ def _restore_texts(
     restored: List[str] = []
     placeholder_issue = False
     for translated, mapping in zip(texts, mappings, strict=True):
-        fixed = restore(translated, mapping)
+        fixed = restore(translated, mapping, mode)
         if isinstance(fixed, Ok):
             restored.append(fixed.value)
         else:
@@ -287,7 +293,7 @@ def _restore_texts(
             warnings.append(f"empty_response:{index}:untranslated")
         elif is_truncated(source, translated):
             warnings.append(f"truncated_response:{index}")
-        text, lenient_warnings = restore_lenient(translated, mapping)
+        text, lenient_warnings = restore_lenient(translated, mapping, mode)
         warnings.extend(lenient_warnings)
         restored.append(text)
     return None, restored, warnings, True
@@ -392,7 +398,7 @@ class ChunkUnitAdapter:
             ]
         occurrence = ctx.empty_occurrences.get(unit_id, 0) + 1
         error, restored, warnings, review = _restore_texts(
-            unit_id, ctx.attempt, batch.texts, texts, batch.mappings, occurrence
+            unit_id, ctx.attempt, batch.texts, texts, batch.mappings, occurrence, self.mode
         )
         if error is not None:
             return [error]
@@ -528,6 +534,7 @@ class OverlayUnitAdapter:
                 [texts[index]],
                 [batch.mappings[index]],
                 occurrence,
+                self.mode,
             )
             if error is not None:
                 results.append(error)

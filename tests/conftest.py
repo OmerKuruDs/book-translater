@@ -376,6 +376,10 @@ def make_settings(**overrides: Any) -> Settings:
         "chunk_max": 200,
         "backoff_base_s": 1.0,
         "backoff_cap_s": 8.0,
+        # off by default so a 429 does not add a pool-wide sleep to every clock
+        # assertion; the tests that are about the cool-off switch it on themselves.
+        "rate_limit_cool_off_s": 0.0,
+        "rate_limit_min_delay_s": 0.0,
     }
     values.update(overrides)
     return Settings(_env_file=None, **values)  # type: ignore[call-arg]

@@ -135,6 +135,7 @@ from ..logging_setup import bind_job, chunk_context
 from ..translators.base import (
     BaseTranslator,
     GlossaryBinding,
+    GlossaryCleanup,
     ProviderResponse,
     TranslationRequest,
     get_translator,
@@ -317,6 +318,7 @@ class GlossaryOutcome:
     ambiguous: int
     rejected: int
     written: bool  # False when an existing file was kept untouched
+    cleanup: Optional[GlossaryCleanup] = None  # --cleanup-remote only
 
 
 @dataclass(frozen=True)
@@ -563,6 +565,11 @@ class _TranslateContext:
     pause_patch: JobPatch = field(default_factory=lambda: JobPatch(status="PAUSED"))
     stats: _RunStats = field(default_factory=_RunStats)
     empty_counts: Dict[int, int] = field(default_factory=dict)
+    rate_limit_counts: Dict[int, int] = field(default_factory=dict)
+    """429s per unit *in this run* - the separate budget of ``BackoffPolicy``.
+
+    Deliberately in memory and not in the database: a resumed job starts the wait over,
+    which is the right reading of "the provider was busy an hour ago"."""
     provider_units: Dict[str, int] = field(default_factory=dict)  # this run, per provider
     pause_error: Optional[AppError] = None
     lease_lost: Optional[AppError] = None
@@ -1590,6 +1597,49 @@ class Orchestrator:
             log.exception("glossary stage crashed", extra={"event": "stage_crashed"})
             return _internal("glossary", exc)
 
+    async def cleanup_remote_glossaries(
+        self,
+        *,
+        provider: Optional[str] = None,
+        user_glossary: Optional[Path] = None,
+    ) -> Result[GlossaryCleanup]:
+        """``glossary --cleanup-remote``: drop the provider glossaries this tool left behind.
+
+        DeepL caps how many glossaries an account may hold and answers the same HTTP 456
+        as an exhausted character quota when the cap is hit, so a tool that can only
+        *create* glossaries eventually paints the user into a corner. The glossary of the
+        current effective terms is kept (it is the one the next ``translate`` binds) and
+        anything the user created by hand is left alone - see
+        :meth:`BaseTranslator.cleanup_glossaries`.
+        """
+        try:
+            name = provider or self.settings.provider
+            made = self._translator_factory(name, self.settings)
+            if isinstance(made, Err):
+                return made
+            translator = made.value
+            loaded = self._load_effective_glossary(user_glossary)
+            if isinstance(loaded, Err):
+                return loaded
+            try:
+                cleaned = await translator.cleanup_glossaries(
+                    keep_hash=loaded.value.glossary_hash
+                )
+            finally:
+                await translator.aclose()
+            if isinstance(cleaned, Ok):
+                log.info(
+                    "remote glossary cleanup on %s: %d deleted, %d kept",
+                    name,
+                    len(cleaned.value.deleted),
+                    cleaned.value.kept_foreign + (1 if cleaned.value.kept_current else 0),
+                    extra={"event": "glossary_cleanup"},
+                )
+            return cleaned
+        except Exception as exc:  # noqa: BLE001 - boundary
+            log.exception("glossary cleanup crashed", extra={"event": "stage_crashed"})
+            return _internal("glossary cleanup", exc)
+
     def _load_effective_glossary(
         self, user_glossary: Optional[Path]
     ) -> Result[EffectiveGlossary]:
@@ -1895,12 +1945,17 @@ class Orchestrator:
             if isinstance(patched, Err):
                 return patched
             limiter = AdaptiveLimiter(
-                self.settings.concurrency, on_change=self._on_limiter_change
+                self.settings.concurrency,
+                on_change=self._on_limiter_change,
+                cool_off_s=self.settings.rate_limit_cool_off_s,
+                sleep=self._sleep,
             )
             policy = BackoffPolicy(
                 base_s=self.settings.backoff_base_s,
                 cap_s=self.settings.backoff_cap_s,
                 max_retries=self.settings.max_retries,
+                rate_limit_max_retries=self.settings.rate_limit_max_retries,
+                rate_limit_min_delay_s=self.settings.rate_limit_min_delay_s,
                 rng=self._rng,
             )
             ctx = _TranslateContext(
@@ -2611,7 +2666,7 @@ class Orchestrator:
     async def _worker(self, ctx: _TranslateContext, units: Sequence[Any]) -> None:
         adapter = ctx.adapter
         first_id = adapter.unit_id(units[0])
-        attempt = max(adapter.retry_count(u) for u in units) + 1
+        attempt = max(self._attempts_so_far(ctx, u) for u in units) + 1
         for unit in units:
             last_error = adapter.last_error(unit)
             unit_id = adapter.unit_id(unit)
@@ -2628,7 +2683,9 @@ class Orchestrator:
                     if adapter.is_translatable(unit):
                         todo.append(unit)
                         continue
-                    with chunk_context(adapter.unit_id(unit), adapter.retry_count(unit) + 1):
+                    with chunk_context(
+                        adapter.unit_id(unit), self._attempts_so_far(ctx, unit) + 1
+                    ):
                         await self._complete(
                             ctx,
                             adapter.unit_id(unit),
@@ -2696,11 +2753,22 @@ class Orchestrator:
         if any(isinstance(r, Ok) and r.value.chars_sent > 0 for r in results):
             ctx.limiter.on_success()
         for unit, result in zip(units, results, strict=True):
-            with chunk_context(adapter.unit_id(unit), adapter.retry_count(unit) + 1):
+            with chunk_context(adapter.unit_id(unit), self._attempts_so_far(ctx, unit) + 1):
                 if isinstance(result, Ok):
                     await self._complete(ctx, adapter.unit_id(unit), result.value)
                 else:
                     await self._handle_error(ctx, unit, result.error)
+
+    @staticmethod
+    def _attempts_so_far(ctx: _TranslateContext, unit: Any) -> int:
+        """Provider calls this unit has already cost: the stored retries *plus* the 429s.
+
+        A rate-limited retry deliberately leaves ``retry_count`` alone (it must not spend
+        the failure budget), but it was still a call, and the attempt number in the logs,
+        in ``chunk_context`` and in ``TranslationResult.attempts`` has to say so.
+        """
+        unit_id = ctx.adapter.unit_id(unit)
+        return ctx.adapter.retry_count(unit) + ctx.rate_limit_counts.get(unit_id, 0)
 
     async def _handle_batch_error(
         self, ctx: _TranslateContext, units: Sequence[Any], error: AppError
@@ -2713,18 +2781,26 @@ class Orchestrator:
         instead of N single-unit requests.
         """
         adapter = ctx.adapter
-        if error.code is ErrorCode.PROVIDER_RATE_LIMITED:
+        rate_limited = error.code is ErrorCode.PROVIDER_RATE_LIMITED
+        if rate_limited:
             ctx.limiter.on_rate_limited()
             ctx.stats.rate_limited += 1
         when: Optional[datetime] = None
         delay = 0.0
         if error.scope is ErrorScope.CHUNK_RETRYABLE:
-            delay = ctx.policy.next_delay(
-                max(adapter.retry_count(u) for u in units), error.retry_after_s
-            )
+            if rate_limited:
+                # the 429 budget is counted per unit but spent by the batch as a whole
+                delay = ctx.policy.next_rate_limit_delay(
+                    max(ctx.rate_limit_counts.get(adapter.unit_id(u), 0) for u in units),
+                    error.retry_after_s,
+                )
+            else:
+                delay = ctx.policy.next_delay(
+                    max(adapter.retry_count(u) for u in units), error.retry_after_s
+                )
             when = self._clock() + timedelta(seconds=delay)
         for unit in units:
-            with chunk_context(adapter.unit_id(unit), adapter.retry_count(unit) + 1):
+            with chunk_context(adapter.unit_id(unit), self._attempts_so_far(ctx, unit) + 1):
                 await self._handle_error(
                     ctx, unit, error, signal=False, when=when, delay=delay
                 )
@@ -2759,6 +2835,7 @@ class Orchestrator:
             attempt=attempt,
             glossary=ctx.binding,
             context=batch.context if ctx.translator.capabilities.supports_context else None,
+            protect_mode=ctx.mode,
         )
         started = time.perf_counter()
         async with ctx.limiter:
@@ -2881,9 +2958,13 @@ class Orchestrator:
         adapter = ctx.adapter
         unit_id = adapter.unit_id(unit)
         retry_count = adapter.retry_count(unit)
-        if signal and error.code is ErrorCode.PROVIDER_RATE_LIMITED:
+        rate_limited = error.code is ErrorCode.PROVIDER_RATE_LIMITED
+        if signal and rate_limited:
             ctx.limiter.on_rate_limited()
             ctx.stats.rate_limited += 1
+        if rate_limited and error.scope is ErrorScope.CHUNK_RETRYABLE:
+            await self._handle_rate_limit(ctx, unit_id, retry_count, error, when, delay)
+            return
         if error.scope is ErrorScope.CHUNK_RETRYABLE:
             stored = error
             if error.code is ErrorCode.PROVIDER_EMPTY_RESPONSE:
@@ -2927,6 +3008,63 @@ class Orchestrator:
             await self._fail(ctx, unit_id, error, None)
             return
         await self._pause(ctx, unit_id, error)
+
+    async def _handle_rate_limit(
+        self,
+        ctx: _TranslateContext,
+        unit_id: int,
+        retry_count: int,
+        error: AppError,
+        when: Optional[datetime],
+        delay: float,
+    ) -> None:
+        """HTTP 429 for one unit: wait, and when waiting is no longer enough, pause.
+
+        The stored ``retry_count`` is *not* spent (``bump_retry=False``): it is the budget
+        for errors the unit itself causes, and a throttled provider is not one of those. A
+        rate limit therefore can never turn a unit into a permanent FAILED - the worst it
+        can do is stop the job, which ``resume`` picks up where it left off.
+        """
+        count = ctx.rate_limit_counts.get(unit_id, 0) + 1
+        ctx.rate_limit_counts[unit_id] = count
+        if not ctx.policy.can_retry_rate_limited(count - 1):
+            await self._pause(
+                ctx,
+                unit_id,
+                dataclasses.replace(
+                    error,
+                    message=(
+                        f"{error.message}; still rate limited after {count - 1} waits - "
+                        "the job is paused with its work intact, resume it when the "
+                        "provider lets requests through again"
+                    ),
+                    scope=ErrorScope.JOB_FATAL,
+                ),
+            )
+            return
+        if when is None:
+            delay = ctx.policy.next_rate_limit_delay(count - 1, error.retry_after_s)
+            when = self._clock() + timedelta(seconds=delay)
+        rescheduled = await self._db(
+            ctx.lock, ctx.repo.reschedule, ctx.bound.job.id, unit_id, error, when, False
+        )
+        if isinstance(rescheduled, Err):
+            self._state_failure(ctx, rescheduled.error, "reschedule_failed")
+        elif not rescheduled.value:
+            log.warning(
+                "unit %d was no longer PROCESSING at reschedule", unit_id,
+                extra={"event": "reschedule_precondition_failed"},
+            )
+        else:
+            log.warning(
+                "chunk rescheduled in %.1fs (rate limit %d/%d, retry budget %d untouched): %s",
+                delay,
+                count,
+                ctx.policy.rate_limit_max_retries,
+                retry_count,
+                error.message,
+                extra={"event": "chunk_rescheduled", "http_status": 429},
+            )
 
     async def _pause(self, ctx: _TranslateContext, unit_id: int, error: AppError) -> None:
         released = await self._db(ctx.lock, ctx.repo.release, ctx.bound.job.id, [unit_id])

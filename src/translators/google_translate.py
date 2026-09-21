@@ -31,7 +31,11 @@ markup through, which is exactly what the ``<x id="n"/>`` placeholders of
 ``"xml"`` :data:`~translators.protect.ProtectMode` for this provider, the same mode DeepL
 uses - the sentinel mode (``⟦1⟧``) would travel through the NMT model as ordinary text and
 can come back spaced or dropped. In HTML mode Google escapes ``&``, ``<``, ``>``
-and ``'`` in its answer, so every returned string is run through :func:`html.unescape`.
+and ``'`` in its answer, so every returned string has to be unescaped - but *how much*
+depends on the protect mode of the request (:func:`_unescape_answer`): in ``"xml"`` mode
+the payload went out already escaped and ``&amp;`` / ``&lt;`` / ``&gt;`` belong to
+:func:`~translators.protect.restore`, which unescapes exactly one level. Undoing them here
+as well would turn a book's literal ``&amp;`` into a bare ``&``.
 
 Accounting
 ----------
@@ -61,7 +65,7 @@ from .base import (
     TranslationRequest,
     TranslatorCapabilities,
 )
-from .protect import strip_control_chars
+from .protect import ProtectMode, strip_control_chars
 
 __all__ = [
     "ENDPOINT",
@@ -121,6 +125,27 @@ def scrub_secret(text: str, secret: Optional[str] = None) -> str:
 
 def _redact(exc: BaseException, secret: Optional[str] = None) -> str:
     return scrub_secret(f"{type(exc).__name__}: {str(exc)[:200]}", secret)
+
+
+_XML_ESCAPED = frozenset({"amp", "lt", "gt"})
+_CHAR_REF = re.compile(r"&(#[0-9]{1,7}|#[xX][0-9a-fA-F]{1,6}|[A-Za-z][A-Za-z0-9]{1,31});")
+
+
+def _unescape_answer(raw: str, mode: ProtectMode) -> str:
+    """Google's ``format=html`` escaping undone, down to the level the caller expects.
+
+    ``"sentinel"``: nothing was escaped on the way out, so everything comes back
+    (``html.unescape``). ``"xml"``: the payload left already escaped, so ``&amp;``,
+    ``&lt;`` and ``&gt;`` are handed on untouched - :func:`~translators.protect.restore`
+    resolves those, once. Only the references Google adds on its own (``&#39;`` for an
+    apostrophe, ``&quot;``) are resolved here.
+    """
+    if mode != "xml":
+        return html.unescape(raw)
+    return _CHAR_REF.sub(
+        lambda m: m.group(0) if m.group(1) in _XML_ESCAPED else html.unescape(m.group(0)),
+        raw,
+    )
 
 
 def _default_client_factory() -> Any:
@@ -424,7 +449,7 @@ class GoogleTranslator(BaseTranslator):
                         context={"chunk_id": request.chunk_id, "attempt": request.attempt},
                     )
                 # format=html means the answer is HTML-escaped ("&#39;", "&amp;").
-                translated = html.unescape(raw)
+                translated = _unescape_answer(raw, request.protect_mode)
                 if source.strip() and not translated.strip():
                     return err(
                         ErrorCode.PROVIDER_EMPTY_RESPONSE,

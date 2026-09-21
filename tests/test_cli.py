@@ -7,7 +7,7 @@ import dataclasses
 import json
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 import pytest
 from typer.testing import CliRunner
@@ -18,6 +18,7 @@ from book_translator.database.repository import JobPatch, JobRepository, JobSpec
 from book_translator.database.session import close_database, open_database
 from book_translator.domain.models import JobSummary, StatusCounts
 from book_translator.domain.result import AppError, Err, ErrorCode, ErrorScope, Ok, unwrap
+from book_translator.glossary.manager import effective_glossary
 from book_translator.pipeline import orchestrator as orchestrator_module
 from book_translator.pipeline.orchestrator import (
     EXIT_FAILURE,
@@ -30,9 +31,14 @@ from book_translator.pipeline.orchestrator import (
     exit_code_for,
     worst_exit,
 )
+from book_translator.translators.base import BaseTranslator, ProviderGlossary
+from tests.conftest import DEFAULT_CAPABILITIES
 
 runner = CliRunner()
 WIDE = {"COLUMNS": "200", "TERM": "dumb"}
+#: A glossary discovered from a page of prose has no *approved* entry, so the effective
+#: glossary of the cleanup tests is the empty one - and its hash is a constant.
+EMPTY_GLOSSARY_HASH = effective_glossary([]).glossary_hash
 
 
 @pytest.fixture(autouse=True)
@@ -1152,3 +1158,179 @@ def _capture_summary(common: Any, summary: JobSummary) -> str:
     finally:
         cli.typer.echo = original  # type: ignore[assignment]
     return "\n".join(printed)
+
+
+# --------------------------------------------------------------------------- #
+# glossary --cleanup-remote (DeepL caps how many glossaries an account may hold)
+# --------------------------------------------------------------------------- #
+
+
+class GlossaryStoreTranslator(BaseTranslator):
+    """Provider that keeps glossaries on its side; records what the cleanup deleted."""
+
+    name = "deepl"
+    capabilities = dataclasses.replace(DEFAULT_CAPABILITIES, supports_glossary=True)
+    listing: List[ProviderGlossary] = []
+    deleted: List[str] = []
+    keep_hashes: List[Optional[str]] = []
+    closed = False
+
+    @classmethod
+    def create(cls, settings: Any) -> Any:
+        return Ok(cls())
+
+    async def prepare(self, glossary: Any, run_id: str) -> Any:
+        raise AssertionError("cleanup must not translate anything")
+
+    async def translate(self, texts: Any, request: Any) -> Any:
+        raise AssertionError("cleanup must not translate anything")
+
+    async def cleanup_glossaries(self, *, keep_hash: Optional[str] = None) -> Any:
+        GlossaryStoreTranslator.keep_hashes.append(keep_hash)
+        return await super().cleanup_glossaries(keep_hash=keep_hash)
+
+    async def list_provider_glossaries(self) -> Any:
+        return Ok(list(GlossaryStoreTranslator.listing))
+
+    async def delete_provider_glossary(self, glossary_id: str) -> Any:
+        GlossaryStoreTranslator.deleted.append(glossary_id)
+        return Ok(None)
+
+    async def aclose(self) -> None:
+        GlossaryStoreTranslator.closed = True
+
+
+@pytest.fixture
+def glossary_store(monkeypatch: pytest.MonkeyPatch) -> Any:
+    GlossaryStoreTranslator.listing = []
+    GlossaryStoreTranslator.deleted = []
+    GlossaryStoreTranslator.keep_hashes = []
+    GlossaryStoreTranslator.closed = False
+    monkeypatch.setattr(
+        orchestrator_module, "get_translator", lambda name, settings: Ok(GlossaryStoreTranslator())
+    )
+    return GlossaryStoreTranslator
+
+
+def _extracted(tmp_path: Path) -> Path:
+    out = tmp_path / "out"
+    out.mkdir()
+    (out / "source_book.md").write_text("# Title\n\nA short page of text.\n", encoding="utf-8")
+    return out
+
+
+def test_cleanup_remote_deletes_the_tools_old_glossaries_and_says_which(
+    glossary_store: Any, tmp_path: Path
+) -> None:
+    """The option used to print "not implemented", which left the user stuck: DeepL refused
+    a new glossary and the tool could not delete the old one either."""
+    current = EMPTY_GLOSSARY_HASH[:16]
+    glossary_store.listing = [
+        ProviderGlossary("g-old", "book-translator:0123456789abcdef", 807, "0123456789abcdef"),
+        ProviderGlossary("g-mine", "ai-ml terms", 12, None),
+        ProviderGlossary("g-now", f"book-translator:{current}", 3, current),
+    ]
+    out = _extracted(tmp_path)
+
+    result = runner.invoke(cli.app, ["glossary", "-o", str(out), "--cleanup-remote"], env=WIDE)
+
+    assert result.exit_code == EXIT_SUCCESS, result.output
+    assert glossary_store.deleted == ["g-old"]  # only the tool's own, stale one
+    assert glossary_store.keep_hashes == [EMPTY_GLOSSARY_HASH]
+    assert glossary_store.closed is True
+    assert "deleted 1 deepl glossary created by this tool" in result.output
+    assert "book-translator:0123456789abcdef (807 entries)" in result.output
+    assert f"kept book-translator:{current} (the current one)" in result.output
+    assert "1 glossary not made by this tool" in result.output
+
+
+def test_cleanup_remote_says_so_when_there_is_nothing_to_delete(
+    glossary_store: Any, tmp_path: Path
+) -> None:
+    glossary_store.listing = [ProviderGlossary("g-mine", "ai-ml terms", 12, None)]
+    out = _extracted(tmp_path)
+
+    result = runner.invoke(cli.app, ["glossary", "-o", str(out), "--cleanup-remote"], env=WIDE)
+
+    assert result.exit_code == EXIT_SUCCESS, result.output
+    assert glossary_store.deleted == []
+    assert "deleted nothing; this tool has no other glossary on deepl" in result.output
+
+
+def test_cleanup_remote_reports_a_provider_that_keeps_no_glossaries(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    class NoGlossaries(GlossaryStoreTranslator):
+        name = "local"
+        capabilities = DEFAULT_CAPABILITIES  # supports_glossary=False
+
+        async def list_provider_glossaries(self) -> Any:
+            raise AssertionError("a provider without glossaries is never asked")
+
+    monkeypatch.setattr(
+        orchestrator_module, "get_translator", lambda name, settings: Ok(NoGlossaries())
+    )
+    out = _extracted(tmp_path)
+
+    result = runner.invoke(
+        cli.app,
+        ["glossary", "-o", str(out), "--cleanup-remote"],
+        env={**WIDE, "BOOK_TRANSLATOR_PROVIDER": "local"},
+    )
+
+    assert result.exit_code == EXIT_SUCCESS, result.output
+    assert "'local' keeps no glossaries on its side" in result.output
+
+
+def test_glossary_without_the_flag_never_contacts_the_provider(
+    glossary_store: Any, tmp_path: Path
+) -> None:
+    glossary_store.listing = [
+        ProviderGlossary("g-old", "book-translator:0123456789abcdef", 807, "0123456789abcdef")
+    ]
+    out = _extracted(tmp_path)
+
+    result = runner.invoke(cli.app, ["glossary", "-o", str(out)], env=WIDE)
+
+    assert result.exit_code == EXIT_SUCCESS, result.output
+    assert glossary_store.deleted == [] and glossary_store.keep_hashes == []
+    assert "cleanup-remote" not in result.output
+
+
+def test_cleanup_remote_failure_fails_the_command(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    class Rejecting(GlossaryStoreTranslator):
+        async def list_provider_glossaries(self) -> Any:
+            return Err(AppError(ErrorCode.PROVIDER_AUTH, "DeepL rejected the API key",
+                                ErrorScope.JOB_FATAL))
+
+    monkeypatch.setattr(
+        orchestrator_module, "get_translator", lambda name, settings: Ok(Rejecting())
+    )
+    out = _extracted(tmp_path)
+
+    result = runner.invoke(cli.app, ["glossary", "-o", str(out), "--cleanup-remote"], env=WIDE)
+
+    assert result.exit_code == EXIT_PAUSED  # provider_auth
+    assert "rejected the API key" in result.output
+
+
+def test_cleanup_remote_json_output_lists_the_deleted_glossaries(
+    glossary_store: Any, tmp_path: Path
+) -> None:
+    glossary_store.listing = [
+        ProviderGlossary("g-old", "book-translator:0123456789abcdef", 807, "0123456789abcdef")
+    ]
+    out = _extracted(tmp_path)
+
+    result = runner.invoke(
+        cli.app, ["glossary", "-o", str(out), "--cleanup-remote", "--json"], env=WIDE
+    )
+
+    assert result.exit_code == EXIT_SUCCESS, result.output
+    payload = json.loads(result.stdout)
+    assert payload["cleanup"]["provider"] == "deepl"
+    assert payload["cleanup"]["deleted"] == [
+        {"name": "book-translator:0123456789abcdef", "entries": 807}
+    ]

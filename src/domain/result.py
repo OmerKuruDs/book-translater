@@ -38,7 +38,12 @@ class ErrorCode(str, Enum):
     GLOSSARY_BIND_FAILED = "glossary_bind_failed"
     PROVIDER_CONFIG = "provider_config"
     PROVIDER_AUTH = "provider_auth"
-    PROVIDER_QUOTA = "provider_quota"
+    PROVIDER_QUOTA = "provider_quota"  # characters are used up; waiting/raising helps
+    # The account holds as many provider-side glossaries as it may. Deliberately *not*
+    # PROVIDER_QUOTA: that code arms the automatic fallback (translators/fallback.py),
+    # and paying a second provider because a glossary slot is missing is the wrong move -
+    # the fix is to delete one glossary.
+    PROVIDER_GLOSSARY_LIMIT = "provider_glossary_limit"
     PROVIDER_RATE_LIMITED = "provider_rate_limited"
     PROVIDER_TRANSIENT = "provider_transient"
     PROVIDER_BAD_REQUEST = "provider_bad_request"
