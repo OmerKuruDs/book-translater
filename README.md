@@ -309,8 +309,8 @@ Machine translation turns established jargon into literal Turkish: *computer vis
 follow, not easier.
 
 A glossary entry whose `target` equals its `source` tells the provider to leave the term
-alone. One ready-made list ships with the repo, `glossaries/terms.en-tr.json`, with **987
-entries**: 809 map a term to itself (keep it in English) and 178 prescribe a Turkish word
+alone. One ready-made list ships with the repo, `glossaries/terms.en-tr.json`, with **1 007
+entries**: 829 map a term to itself (keep it in English) and 178 prescribe a Turkish word
 (`matrix` → `matris`, `pixel` → `piksel`). It is the union of a hand-written
 computer-vision list, the term names of Google's ML Glossary and a hand-written
 linear-algebra/ML sheet. Where the sources disagreed - `convolution`, `tensor`,
@@ -319,6 +319,11 @@ linear-algebra/ML sheet. Where the sources disagreed - `convolution`, `tensor`,
 ```
 book-translator run -i book.pdf -o out --mode overlay     --glossary glossaries/terms.en-tr.json
 ```
+
+**Add the words an acronym stands for, not just the acronym.** An entry for `SIFT`
+keeps the acronym and does nothing for "Scale-Invariant Feature Transform", which
+came back translated - and wrongly. The book spelled out 23 such expansions and the
+glossary had none of them.
 
 **Write Turkish targets in lower case.** The prompt tells a prompt-driven provider to use
 the listed term *exactly*, so a target spelled `Özellik` comes back capitalised in the

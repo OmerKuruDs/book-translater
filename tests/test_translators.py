@@ -1879,3 +1879,18 @@ async def test_a_model_switch_mid_run_is_recorded_too(
     ]
     assert len(served) == 2
     assert "gemini-3.8-flash" in served[0] and "gemini-3.9-flash" in served[1]
+
+
+async def test_the_prompt_tells_the_model_a_line_may_be_a_fragment() -> None:
+    """Blocks the page layout cuts mid-sentence came back invented or truncated.
+
+    Measured on the finished book: "(INRIA, 2005), which is available online at
+    https://lear.inrialpes.fr/..." became "(INRIA, 2005) başlıklı makaleyle popüler hale
+    getirilmiştir." - the URL dropped and a claim invented for it. Re-run with these two
+    rules the URL came back character for character.
+    """
+    prompt = build_prompt(["anything"], glossary())
+
+    assert "fragment" in prompt
+    assert "Never finish the sentence" in prompt
+    assert "URLs" in prompt and "character for character" in prompt

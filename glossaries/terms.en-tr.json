@@ -56,9 +56,33 @@
       "note": "google-ml-glossary"
     },
     {
+      "source": "Fast Library for Appropriate Nearest Neighbors",
+      "target": "Fast Library for Appropriate Nearest Neighbors",
+      "count": 0,
+      "status": "approved",
+      "origin": "user",
+      "note": ""
+    },
+    {
+      "source": "Fast Library for Approximate Nearest Neighbors",
+      "target": "Fast Library for Approximate Nearest Neighbors",
+      "count": 0,
+      "status": "approved",
+      "origin": "user",
+      "note": ""
+    },
+    {
       "source": "Multi-sentence Reading Comprehension (MultiRC)",
       "target": "Multi-sentence Reading Comprehension (MultiRC)",
       "note": "google-ml-glossary"
+    },
+    {
+      "source": "Binary Robust Independent Elementary Features",
+      "target": "Binary Robust Independent Elementary Features",
+      "count": 0,
+      "status": "approved",
+      "origin": "user",
+      "note": ""
     },
     {
       "source": "ROC (receiver operating characteristic) Curve",
@@ -161,6 +185,14 @@
       "note": "google-ml-glossary"
     },
     {
+      "source": "Scale-Invariant Feature Transform",
+      "target": "Scale-Invariant Feature Transform",
+      "count": 0,
+      "status": "approved",
+      "origin": "user",
+      "note": ""
+    },
+    {
       "source": "contextualized language embedding",
       "target": "contextualized language embedding",
       "note": "google-ml-glossary"
@@ -174,6 +206,14 @@
       "source": "stochastic gradient descent (SGD)",
       "target": "stochastic gradient descent (SGD)",
       "note": "google-ml-glossary"
+    },
+    {
+      "source": "Deep Learning Deployment Toolkit",
+      "target": "Deep Learning Deployment Toolkit",
+      "count": 0,
+      "status": "approved",
+      "origin": "user",
+      "note": ""
     },
     {
       "source": "Neural Architecture Search (NAS)",
@@ -204,6 +244,30 @@
       "source": "Character N-gram F-score (ChrF)",
       "target": "Character N-gram F-score (ChrF)",
       "note": "google-ml-glossary"
+    },
+    {
+      "source": "Continuously Adaptive MeanShift",
+      "target": "Continuously Adaptive MeanShift",
+      "count": 0,
+      "status": "approved",
+      "origin": "user",
+      "note": ""
+    },
+    {
+      "source": "Local Binary Pattern Histograms",
+      "target": "Local Binary Pattern Histograms",
+      "count": 0,
+      "status": "approved",
+      "origin": "user",
+      "note": ""
+    },
+    {
+      "source": "Oriented FAST and Rotated BRIEF",
+      "target": "Oriented FAST and Rotated BRIEF",
+      "count": 0,
+      "status": "approved",
+      "origin": "user",
+      "note": ""
     },
     {
       "source": "Winograd Schema Challenge (WSC)",
@@ -311,6 +375,14 @@
       "note": "google-ml-glossary"
     },
     {
+      "source": "Principal Component Analysis",
+      "target": "Principal Component Analysis",
+      "count": 0,
+      "status": "approved",
+      "origin": "user",
+      "note": ""
+    },
+    {
       "source": "Rectified Linear Unit (ReLU)",
       "target": "Rectified Linear Unit (ReLU)",
       "note": "google-ml-glossary"
@@ -364,6 +436,14 @@
       "source": "BERT (Bidirectional Encoder",
       "target": "BERT (Bidirectional Encoder",
       "note": "google-ml-glossary"
+    },
+    {
+      "source": "Open Source Computer Vision",
+      "target": "Open Source Computer Vision",
+      "count": 0,
+      "status": "approved",
+      "origin": "user",
+      "note": ""
     },
     {
       "source": "natural language processing",
@@ -501,6 +581,14 @@
       "note": "task"
     },
     {
+      "source": "Accelerated Segment Test",
+      "target": "Accelerated Segment Test",
+      "count": 0,
+      "status": "approved",
+      "origin": "user",
+      "note": ""
+    },
+    {
       "source": "Mean Squared Error (MSE)",
       "target": "Mean Squared Error (MSE)",
       "note": "google-ml-glossary"
@@ -596,6 +684,14 @@
       "note": "user-xlsx"
     },
     {
+      "source": "Difference of Gaussians",
+      "target": "Difference of Gaussians",
+      "count": 0,
+      "status": "approved",
+      "origin": "user",
+      "note": ""
+    },
+    {
       "source": "Homogeneous Coordinates",
       "target": "homojen koordinatlar",
       "note": "user-xlsx"
@@ -689,6 +785,22 @@
       "source": "Conditional Generation",
       "target": "koşullu üretim",
       "note": "user-xlsx"
+    },
+    {
+      "source": "Difference of Gaussian",
+      "target": "Difference of Gaussian",
+      "count": 0,
+      "status": "approved",
+      "origin": "user",
+      "note": ""
+    },
+    {
+      "source": "Gaussian Mixture Model",
+      "target": "Gaussian Mixture Model",
+      "count": 0,
+      "status": "approved",
+      "origin": "user",
+      "note": ""
     },
     {
       "source": "Layers API (tf.layers)",
@@ -989,6 +1101,22 @@
       "source": "Marginal Probability",
       "target": "marjinal olasılık",
       "note": "user-xlsx"
+    },
+    {
+      "source": "Mixture of Gaussians",
+      "target": "Mixture of Gaussians",
+      "count": 0,
+      "status": "approved",
+      "origin": "user",
+      "note": ""
+    },
+    {
+      "source": "Single Shot Detector",
+      "target": "Single Shot Detector",
+      "count": 0,
+      "status": "approved",
+      "origin": "user",
+      "note": ""
     },
     {
       "source": "automatic evaluation",
@@ -1311,6 +1439,14 @@
       "note": "user-xlsx"
     },
     {
+      "source": "Internet of Things",
+      "target": "Internet of Things",
+      "count": 0,
+      "status": "approved",
+      "origin": "user",
+      "note": ""
+    },
+    {
       "source": "Linear Combination",
       "target": "doğrusal kombinasyon",
       "note": "user-xlsx"
@@ -1334,6 +1470,14 @@
       "source": "TensorFlow Serving",
       "target": "TensorFlow Serving",
       "note": "google-ml-glossary"
+    },
+    {
+      "source": "Yale Face Database",
+      "target": "Yale Face Database",
+      "count": 0,
+      "status": "approved",
+      "origin": "user",
+      "note": ""
     },
     {
       "source": "action recognition",
@@ -2081,6 +2225,14 @@
       "note": "user-xlsx"
     },
     {
+      "source": "Video for Linux",
+      "target": "Video for Linux",
+      "count": 0,
+      "status": "approved",
+      "origin": "user",
+      "note": ""
+    },
+    {
       "source": "active learning",
       "target": "active learning",
       "note": "field"
@@ -2684,6 +2836,14 @@
       "source": "Low Frequency",
       "target": "düşük frekans",
       "note": "user-xlsx"
+    },
+    {
+      "source": "Near-Infrared",
+      "target": "Near-Infrared",
+      "count": 0,
+      "status": "approved",
+      "origin": "user",
+      "note": ""
     },
     {
       "source": "Object Motion",

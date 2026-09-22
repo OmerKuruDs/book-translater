@@ -34,7 +34,12 @@ _INSTRUCTIONS = (
     "is, in the same position relative to the surrounding words; never translate, drop, "
     "duplicate or renumber it.\n"
     "- Keep Markdown inline formatting (**bold**, *italic*) on the corresponding words.\n"
-    "- Do not merge or split lines; translate each input text on its own."
+    "- Do not merge or split lines; translate each input text on its own.\n"
+    "- A text may be a fragment: the page layout cuts sentences, so an item can start "
+    "or end mid-sentence. Translate exactly what is there. Never finish the sentence, "
+    "never add a clause it does not have, and never leave one out.\n"
+    "- Copy URLs, file paths, code identifiers, file names, numbers and years "
+    "character for character. They are never translated, shortened or replaced."
 )
 
 
