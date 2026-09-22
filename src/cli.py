@@ -1586,18 +1586,6 @@ def exporters(json_output: bool = JSON_OPTION) -> None:
     raise typer.Exit(EXIT_SUCCESS)
 
 
-def main() -> None:
-    """Console-script entry point (``book-translator``)."""
-    try:
-        app()
-    except KeyboardInterrupt:  # pragma: no cover - last resort
-        raise SystemExit(EXIT_INTERRUPTED) from None
-
-
-if __name__ == "__main__":  # pragma: no cover
-    main()
-
-
 @app.command()
 def web(
     host: str = WEB_HOST_OPTION,
@@ -1626,3 +1614,15 @@ def web(
         )
         raise typer.Exit(code=EXIT_FAILURE) from exc
     raise typer.Exit(code=web_main(argv))
+
+
+def main() -> None:
+    """Console-script entry point (``book-translator``)."""
+    try:
+        app()
+    except KeyboardInterrupt:  # pragma: no cover - last resort
+        raise SystemExit(EXIT_INTERRUPTED) from None
+
+
+if __name__ == "__main__":  # pragma: no cover
+    main()

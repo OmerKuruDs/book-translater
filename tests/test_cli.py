@@ -1334,3 +1334,18 @@ def test_cleanup_remote_json_output_lists_the_deleted_glossaries(
     assert payload["cleanup"]["deleted"] == [
         {"name": "book-translator:0123456789abcdef", "entries": 807}
     ]
+
+
+def test_every_command_is_registered_before_the_entry_point() -> None:
+    """A command defined below ``main()`` is invisible to ``python -m``.
+
+    The module runs top to bottom: it reaches the ``__main__`` guard, calls ``main()``
+    and parses argv before a decorator further down has executed. Imported as a module -
+    the console script's path - the whole file runs first, so ``book-translator web``
+    worked while ``python -m book_translator.cli web`` answered "No such command".
+    """
+    source = Path(cli.__file__).read_text(encoding="utf-8")
+    guard = source.index('if __name__ == "__main__":')
+    assert "@app.command()" not in source[guard:], (
+        "a command is registered after the __main__ guard; move it above main()"
+    )
