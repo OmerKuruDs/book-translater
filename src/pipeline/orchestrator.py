@@ -719,6 +719,7 @@ class Orchestrator:
         clock: Optional[Clock] = None,
         sleep: Optional[Sleep] = None,
         progress: Optional[ProgressCallback] = None,
+        page_progress: Optional[Callable[[int, int], None]] = None,
         cancel: Optional[asyncio.Event] = None,
         abort: Optional[asyncio.Event] = None,
         heartbeat_interval_s: float = 10.0,
@@ -744,6 +745,10 @@ class Orchestrator:
         self._clock: Clock = clock or utcnow
         self._sleep: Sleep = sleep or asyncio.sleep
         self._progress = progress
+        #: Called with (pages done, pages total) while a stage walks pages. The
+        #: export of a long book takes longer than its translation, so a front end
+        #: that only follows unit progress goes blank for the slowest part.
+        self._page_progress = page_progress
         self.cancel = cancel if cancel is not None else asyncio.Event()
         self.abort = abort if abort is not None else asyncio.Event()
         self._heartbeat_interval = heartbeat_interval_s
@@ -3941,6 +3946,8 @@ class Orchestrator:
             return repo.iter_page(job_id, page)
 
         def progress(done: int, total: int) -> None:
+            if self._page_progress is not None:
+                self._page_progress(done, total)
             if done == total or done % 10 == 0:
                 log.info(
                     "overlay export: page %d/%d", done, total,

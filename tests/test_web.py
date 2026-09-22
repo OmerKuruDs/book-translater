@@ -663,3 +663,29 @@ def test_the_form_sections_are_numbered_in_order(tmp_path: Path) -> None:
     # Step 1 is the drop zone (an <h2>); the rest are <legend>s.
     numbers = [int(n) for n in re.findall(r"<(?:h2|legend)>(\d+) &middot;", page)]
     assert numbers == list(range(1, len(numbers) + 1)), numbers
+
+
+def test_the_export_stage_reports_pages_not_a_frozen_unit_counter(
+    tmp_path: Path, overlay_pdfs: Dict[str, Path]
+) -> None:
+    """A 938-page book translated in 30 minutes and spent 75 more in the export, during
+    which the page showed the translate counters frozen at their final values. It looked
+    finished and broken. The stage counts pages; the snapshot now carries them."""
+    client = make_client(tmp_path)
+
+    job = upload(client, overlay_pdfs["overlay_styles"], mode="overlay").json()
+
+    assert job["phase"] == "done", job
+    # The inline runner has finished, so the counters hold the export's last report.
+    assert job["pages_total"] > 0
+    assert job["pages_done"] == job["pages_total"]
+
+
+def test_the_page_shows_pages_while_exporting(tmp_path: Path) -> None:
+    """Without this the counter line only ever mentions units, which do not move once
+    the translation is done."""
+    page = make_client(tmp_path).get("/").text
+    assert "pages_done" in page and "pages_total" in page
+    # the bar follows pages while exporting instead of the units that stopped moving
+    assert "job.pages_done / job.pages_total" in page
+    assert 'var exporting = job.stage === "export"' in page

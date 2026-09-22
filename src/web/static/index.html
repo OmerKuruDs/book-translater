@@ -382,10 +382,19 @@
       chip.textContent = STAGE_LABELS[name] || name;
       wrap.appendChild(chip);
     });
-    var pct = job.total > 0 ? Math.round((job.completed / job.total) * 100) : 0;
+    // While exporting, follow pages: the unit counters stopped moving when the
+    // translation ended, so a bar tied to them sits at 100% for the slowest stage.
+    var exporting = job.stage === "export" && job.pages_total > 0;
+    var pct = exporting
+      ? Math.round((job.pages_done / job.pages_total) * 100)
+      : (job.total > 0 ? Math.round((job.completed / job.total) * 100) : 0);
     el("bar-fill").style.width = pct + "%";
     var parts = [];
-    if (job.total > 0) { parts.push(job.completed + " / " + job.total + " birim"); }
+    if (exporting) {
+      parts.push(job.pages_done + " / " + job.pages_total + " sayfa yazıldı");
+    } else if (job.total > 0) {
+      parts.push(job.completed + " / " + job.total + " birim");
+    }
     if (job.failed > 0) { parts.push(job.failed + " başarısız"); }
     if (job.chars_sent > 0) { parts.push(job.chars_sent + " karakter gönderildi"); }
     if (job.phase === "estimating") { parts.unshift("tahmin çıkarılıyor"); }

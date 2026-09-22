@@ -200,7 +200,7 @@ class _TrackingOrchestrator(Orchestrator):
 
 @dataclass
 class JobProgress:
-    """Live translate-stage counters (the only stage that reports unit progress)."""
+    """Live counters: units while translating, pages while exporting."""
 
     stage: Optional[str] = None
     completed: int = 0
@@ -208,6 +208,9 @@ class JobProgress:
     total: int = 0
     chars_sent: int = 0
     elapsed_s: float = 0.0
+    #: Export walks pages, not units, and on a long book it is the slower half.
+    pages_done: int = 0
+    pages_total: int = 0
 
 
 @dataclass(frozen=True)
@@ -455,6 +458,8 @@ class JobManager:
                 "total": progress.total,
                 "chars_sent": progress.chars_sent,
                 "elapsed_s": round(progress.elapsed_s, 1),
+                "pages_done": progress.pages_done,
+                "pages_total": progress.pages_total,
             }
         payload["estimate"] = (
             None if estimate is None else {"units": estimate.units, "chars": estimate.chars}
@@ -516,6 +521,11 @@ class JobManager:
         with self._lock:
             for name, value in changes.items():
                 setattr(job, name, value)
+
+    def _on_page_progress(self, job: Job, done: int, total: int) -> None:
+        with self._lock:
+            job.progress.pages_done = done
+            job.progress.pages_total = total
 
     def _on_stage(self, job: Job, stage: str) -> None:
         with self._lock:
@@ -593,6 +603,9 @@ class JobManager:
                 translator_factory=self._translator_factory,
                 progress=lambda event: self._on_progress(job, event),
                 on_stage=lambda stage: self._on_stage(job, stage),
+                page_progress=lambda done, total: self._on_page_progress(
+                    job, done, total
+                ),
             )
             chosen: List[Path] = []
             for name in job.glossaries:
