@@ -3053,6 +3053,52 @@ async def test_quota_falls_back_and_records_the_real_provider(tmp_path: Path) ->
     ] == {"deepl": 2, "google": 3}
 
 
+async def test_switching_the_fallback_off_keeps_the_run_on_one_provider(
+    tmp_path: Path,
+) -> None:
+    """"none" is a truthy string, and ``requested or settings...`` passed it straight to
+    the translator factory: the run died with "unknown provider 'none'". The documented
+    way to disable the fallback was the one way that failed, and it failed on a run
+    deliberately kept off a paid second provider."""
+    md, chunks = paragraphs(3)
+    ws = make_workspace(tmp_path, md)
+    seed(ws, chunks)
+    primary = named(FakeTranslator(), "deepl")
+    secondary = named(FakeTranslator(), "google")
+    orch = build_pair(
+        ws,
+        {"deepl": primary, "google": secondary},
+        settings=make_settings(concurrency=1, google_cloud_api="AIza" + "x" * 35),
+    )
+
+    summary = unwrap(
+        await orch.translate(ws.input_pdf, provider="deepl", fallback_provider="none")
+    )
+
+    assert summary.exit_code == EXIT_SUCCESS
+    assert summary.counts.completed == 3
+    assert secondary.calls == []  # the second provider was never even constructed
+    assert not any(w.startswith("provider_fallback_armed") for w in summary.warnings)
+
+
+async def test_a_configured_second_provider_is_still_armed_by_default(
+    tmp_path: Path,
+) -> None:
+    """The off switch must not disarm the automatic fallback for everyone else."""
+    md, chunks = paragraphs(2)
+    ws = make_workspace(tmp_path, md)
+    seed(ws, chunks)
+    orch = build_pair(
+        ws,
+        {"deepl": named(FakeTranslator(), "deepl"), "google": named(FakeTranslator(), "google")},
+        settings=make_settings(concurrency=1, google_cloud_api="AIza" + "x" * 35),
+    )
+
+    summary = unwrap(await orch.translate(ws.input_pdf, provider="deepl"))
+
+    assert any(w.startswith("provider_fallback_armed") for w in summary.warnings)
+
+
 async def test_fallback_units_survive_into_status(tmp_path: Path) -> None:
     md, chunks = paragraphs(3)
     ws = make_workspace(tmp_path, md)

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import dataclasses
+import logging
 import random
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
@@ -46,6 +47,7 @@ from book_translator.translators.deepl_translator import (
     glossary_name_for,
 )
 from book_translator.translators.fallback import FallbackResponse, FallbackTranslator
+from book_translator.translators.gemini import GeminiTranslator, endpoint_for
 from book_translator.translators.google_translate import ENDPOINT, GoogleTranslator
 from book_translator.translators.llm_base import MAX_PROMPT_TERMS, BaseLLMTranslator, build_prompt
 from book_translator.translators.local_nmt import LocalNMTTranslator, apply_post_replace
@@ -361,7 +363,7 @@ async def test_limiter_cancelled_waiter_does_not_leak_permit() -> None:
 
 
 def test_registry_lists_and_rejects_unknown(monkeypatch: pytest.MonkeyPatch) -> None:
-    assert list_translators() == ["deepl", "google", "local"]
+    assert list_translators() == ["deepl", "gemini", "google", "local"]
     result = get_translator("nope", settings_with_key())
     assert isinstance(result, Err) and result.error.code == ErrorCode.PROVIDER_CONFIG
 
@@ -752,6 +754,43 @@ def test_build_prompt_contains_every_term_present_and_excludes_others() -> None:
     assert "Castle" not in prompt
     assert "⟦n⟧" in prompt
     assert "[1] The Dragon flew." in prompt and "[2] A Sword ⟦1⟧ shone." in prompt
+
+
+def test_a_term_opening_a_sentence_still_reaches_the_prompt() -> None:
+    """A glossary term is only obeyed if the model is shown it, and the occurrence check
+    used to be exact-case. Measured live against Gemini: of three terms in three
+    sentences, the two that opened their sentence never entered the prompt and came back
+    translated ("Bilgisayarli goru"); the one sitting mid-sentence entered and was kept.
+    Case-folding the check took that run to three out of three."""
+    g = glossary(("computer vision", "computer vision"), ("object detection", "nesne"))
+    texts = [
+        "Computer vision is a field.",  # capitalised: sentence start
+        "OBJECT DETECTION in a heading.",  # a heading shouts
+    ]
+
+    prompt = build_prompt(texts, g)
+
+    assert "computer vision \u21d2 computer vision" in prompt
+    assert "object detection \u21d2 nesne" in prompt
+
+
+def test_the_terminology_block_keeps_the_glossary_spelling() -> None:
+    """Matching is case-insensitive; the pair shown is still the glossary's own, because
+    that is the form the model is asked to produce."""
+    g = glossary(("OpenCV", "OpenCV"))
+
+    prompt = build_prompt(["opencv is a library."], g)
+
+    assert "OpenCV \u21d2 OpenCV" in prompt
+
+
+def test_an_absent_term_is_still_left_out() -> None:
+    g = glossary(("Dragon", "Ejderha"), ("Castle", "Kale"))
+
+    prompt = build_prompt(["The dragon flew."], g)
+
+    assert "Dragon \u21d2 Ejderha" in prompt
+    assert "Castle" not in prompt
 
 
 def test_build_prompt_caps_terms_at_200() -> None:
@@ -1501,3 +1540,342 @@ def test_an_unknown_fallback_name_is_a_user_error() -> None:
     assert isinstance(result, Err)
     assert result.error.code is ErrorCode.PROVIDER_CONFIG
     assert "nope" in result.error.message
+
+
+# --------------------------------------------------------------------------- #
+# Gemini (Generative Language API)
+# --------------------------------------------------------------------------- #
+
+GEMINI_KEY = "AIzaSyD-FAKE-gemini-key-0123456789ab"
+
+
+def gemini_settings(key: Optional[str] = GEMINI_KEY, **kw: Any) -> Settings:
+    return Settings(_env_file=None, gemini_api_key=key, **kw)  # type: ignore[call-arg]
+
+
+def make_gemini(
+    client: FakeHttpClient, key: Optional[str] = GEMINI_KEY, **kw: Any
+) -> GeminiTranslator:
+    made = GeminiTranslator.create(gemini_settings(key, **kw), client_factory=lambda: client)
+    translator = unwrap(made)
+    assert isinstance(translator, GeminiTranslator)
+    return translator
+
+
+def gemini_answer(text: str) -> FakeHttpResponse:
+    return FakeHttpResponse(
+        200,
+        {
+            "candidates": [{"content": {"parts": [{"text": text}]}, "finishReason": "STOP"}],
+            "usageMetadata": {"promptTokenCount": 10, "candidatesTokenCount": 4},
+            "modelVersion": "gemini-3.8-flash",
+        },
+    )
+
+
+def gemini_error(
+    status: int, api_status: str, message: str = "boom", **extra: Any
+) -> FakeHttpResponse:
+    error: Dict[str, Any] = {"code": status, "message": message, "status": api_status}
+    error.update(extra)
+    return FakeHttpResponse(status, {"error": error})
+
+
+async def test_gemini_translates_a_batch_and_sends_the_key_in_a_header() -> None:
+    """A key in the query string reaches proxy logs and httpx exception text; a header
+    does not. The numbered answer is mapped back onto the inputs in order."""
+    client = FakeHttpClient([gemini_answer("[1] Merhaba\n[2] Dunya")])
+    translator = make_gemini(client)
+
+    response = unwrap(await translator.translate(["Hello", "World"], request()))
+
+    assert response.texts == ["Merhaba", "Dunya"]
+    call = client.calls[0]
+    assert call["url"] == endpoint_for("gemini-3.8-flash")
+    assert call["headers"]["x-goog-api-key"] == GEMINI_KEY
+    assert "params" not in call and GEMINI_KEY not in call["url"]
+
+
+async def test_gemini_carries_the_glossary_in_the_prompt() -> None:
+    """The reason this provider is worth having: no upload step, the terms are simply
+    part of every request - so a glossary works where Cloud Translation v2 has none."""
+    client = FakeHttpClient([gemini_answer("[1] Bu bir computer vision kitabi")])
+    translator = make_gemini(client)
+    glossary = EffectiveGlossary(
+        entries=(entry("computer vision", "computer vision"),),
+        glossary_hash="c" * 64,
+    )
+    binding = unwrap(await translator.prepare(glossary, run_id="r"))
+    assert binding.strategy is GlossaryStrategy.PROMPT
+
+    await translator.translate(["This is a computer vision book"], request())
+
+    prompt = client.calls[0]["json"]["contents"][0]["parts"][0]["text"]
+    assert "computer vision" in prompt and "Terminology" in prompt
+
+
+async def test_gemini_does_not_pay_for_reasoning_by_default() -> None:
+    """Output tokens are the expensive half and a translation needs no deliberation."""
+    client = FakeHttpClient([gemini_answer("[1] a")])
+    translator = make_gemini(client)
+
+    await translator.translate(["a"], request())
+
+    generation = client.calls[0]["json"]["generationConfig"]
+    assert generation["thinkingConfig"] == {"thinkingBudget": 0}
+    assert generation["temperature"] == 0.0  # a retry must not produce a different text
+
+
+async def test_a_negative_thinking_budget_omits_the_field_for_models_that_reject_it() -> None:
+    client = FakeHttpClient([gemini_answer("[1] a")])
+    translator = make_gemini(client, gemini_thinking_budget=-1)
+
+    await translator.translate(["a"], request())
+
+    assert "thinkingConfig" not in client.calls[0]["json"]["generationConfig"]
+
+
+async def test_a_quota_that_promises_no_recovery_is_job_fatal() -> None:
+    """Pressure that clears by waiting must not stop a book; an exhausted allowance must.
+    With no retry delay offered, the API has not promised recovery, so the job pauses and
+    the fallback provider can take the rest of the book."""
+    client = FakeHttpClient(
+        [
+            gemini_error(
+                429,
+                "RESOURCE_EXHAUSTED",
+                "quota exceeded",
+                details=[
+                    {
+                        "@type": "type.googleapis.com/google.rpc.QuotaFailure",
+                        "violations": [
+                            {"quotaId": "GenerateRequestsPerDayPerProjectPerModel-FreeTier"}
+                        ],
+                    }
+                ],
+            )
+        ]
+    )
+    translator = make_gemini(client)
+
+    result = await translator.translate(["a"], request())
+
+    assert isinstance(result, Err)
+    assert result.error.code == ErrorCode.PROVIDER_QUOTA
+    assert result.error.scope == ErrorScope.JOB_FATAL
+
+
+async def test_gemini_per_minute_limit_is_retryable_and_honours_the_asked_delay() -> None:
+    client = FakeHttpClient(
+        [
+            gemini_error(
+                429,
+                "RESOURCE_EXHAUSTED",
+                "too fast",
+                details=[
+                    {"@type": "type.googleapis.com/google.rpc.RetryInfo", "retryDelay": "21s"},
+                    {
+                        "@type": "type.googleapis.com/google.rpc.QuotaFailure",
+                        "violations": [{"quotaId": "GenerateRequestsPerMinutePerProject"}],
+                    },
+                ],
+            )
+        ]
+    )
+    translator = make_gemini(client)
+
+    result = await translator.translate(["a"], request())
+
+    assert isinstance(result, Err)
+    assert result.error.code == ErrorCode.PROVIDER_RATE_LIMITED
+    assert result.error.scope == ErrorScope.CHUNK_RETRYABLE
+    assert result.error.retry_after_s == 21.0
+
+
+async def test_gemini_rejects_a_bad_key_without_printing_it() -> None:
+    client = FakeHttpClient([gemini_error(401, "UNAUTHENTICATED", "API key not valid")])
+    translator = make_gemini(client)
+
+    result = await translator.translate(["a"], request())
+
+    assert isinstance(result, Err)
+    assert result.error.code == ErrorCode.PROVIDER_AUTH
+    assert GEMINI_KEY not in str(result.error)
+
+
+async def test_gemini_400_is_chunk_fatal_not_an_endless_retry() -> None:
+    client = FakeHttpClient([gemini_error(400, "INVALID_ARGUMENT", "unknown field")])
+    translator = make_gemini(client)
+
+    result = await translator.translate(["a"], request())
+
+    assert isinstance(result, Err)
+    assert result.error.code == ErrorCode.PROVIDER_BAD_REQUEST
+    assert result.error.scope == ErrorScope.CHUNK_FATAL
+
+
+async def test_a_refused_text_fails_its_chunk_instead_of_retrying_forever() -> None:
+    """A safety refusal is deterministic: the same text would be refused again."""
+    client = FakeHttpClient([FakeHttpResponse(200, {"candidates": [{"finishReason": "SAFETY"}]})])
+    translator = make_gemini(client)
+
+    result = await translator.translate(["a"], request())
+
+    assert isinstance(result, Err)
+    assert result.error.scope == ErrorScope.CHUNK_FATAL
+
+
+async def test_a_truncated_answer_is_retryable() -> None:
+    client = FakeHttpClient(
+        [FakeHttpResponse(200, {"candidates": [{"finishReason": "MAX_TOKENS", "content": {}}]})]
+    )
+    translator = make_gemini(client)
+
+    result = await translator.translate(["a"], request())
+
+    assert isinstance(result, Err)
+    assert result.error.code == ErrorCode.PROVIDER_EMPTY_RESPONSE
+    assert result.error.scope == ErrorScope.CHUNK_RETRYABLE
+
+
+async def test_gemini_without_a_key_is_a_user_error() -> None:
+    made = GeminiTranslator.create(
+        gemini_settings(None), client_factory=lambda: FakeHttpClient()
+    )
+    assert isinstance(made, Err)
+    assert made.error.code == ErrorCode.PROVIDER_CONFIG
+    assert "GEMINI_API_KEY" in made.error.message
+
+
+async def test_an_empty_wallet_stops_the_job_instead_of_being_retried() -> None:
+    """The live body, verbatim: HTTP 402 arrives with ``RESOURCE_EXHAUSTED`` too, so the
+    429 branch would have treated depleted credits as a rate limit and backed off twenty
+    times over something no amount of waiting fixes."""
+    client = FakeHttpClient(
+        [
+            FakeHttpResponse(
+                402,
+                {
+                    "error": {
+                        "code": 402,
+                        "message": "Your prepayment credits are depleted.",
+                        "status": "RESOURCE_EXHAUSTED",
+                    }
+                },
+            )
+        ]
+    )
+    translator = make_gemini(client)
+
+    result = await translator.translate(["a"], request())
+
+    assert isinstance(result, Err)
+    assert result.error.code == ErrorCode.PROVIDER_QUOTA
+    assert result.error.scope == ErrorScope.JOB_FATAL
+    assert "credits" in result.error.message
+
+
+async def test_a_per_day_quota_id_with_a_short_delay_is_still_just_a_rate_limit() -> None:
+    """Captured verbatim from the free tier. The violation is named
+    ``GenerateRequestsPerDayPerProjectPerModel-FreeTier`` - and it cleared within the
+    minute, exactly as its own ``retryDelay: 45s`` said it would. Reading the name
+    instead of the delay stopped a 120-unit comparison run dead on a speed bump."""
+    client = FakeHttpClient(
+        [
+            gemini_error(
+                429,
+                "RESOURCE_EXHAUSTED",
+                "You exceeded your current quota",
+                details=[
+                    {
+                        "@type": "type.googleapis.com/google.rpc.QuotaFailure",
+                        "violations": [
+                            {
+                                "quotaMetric": (
+                                    "generativelanguage.googleapis.com/"
+                                    "generate_content_free_tier_requests"
+                                ),
+                                "quotaId": "GenerateRequestsPerDayPerProjectPerModel-FreeTier",
+                                "quotaValue": "20",
+                            }
+                        ],
+                    },
+                    {"@type": "type.googleapis.com/google.rpc.RetryInfo", "retryDelay": "45s"},
+                ],
+            )
+        ]
+    )
+    translator = make_gemini(client)
+
+    result = await translator.translate(["a"], request())
+
+    assert isinstance(result, Err)
+    assert result.error.code == ErrorCode.PROVIDER_RATE_LIMITED
+    assert result.error.scope == ErrorScope.CHUNK_RETRYABLE
+    assert result.error.retry_after_s == 45.0
+
+
+async def test_a_delay_too_long_to_wait_out_is_treated_as_an_exhausted_quota() -> None:
+    client = FakeHttpClient(
+        [
+            gemini_error(
+                429,
+                "RESOURCE_EXHAUSTED",
+                "come back tomorrow",
+                details=[
+                    {"@type": "type.googleapis.com/google.rpc.RetryInfo", "retryDelay": "36000s"}
+                ],
+            )
+        ]
+    )
+    translator = make_gemini(client)
+
+    result = await translator.translate(["a"], request())
+
+    assert isinstance(result, Err)
+    assert result.error.code == ErrorCode.PROVIDER_QUOTA
+    assert result.error.scope == ErrorScope.JOB_FATAL
+
+
+async def test_the_model_that_answered_is_recorded_once(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """A finished translation has to be able to say what produced it.
+
+    Nothing recorded the model, and a 35-page output turned out to be a mix of three:
+    the only reason that could be reconstructed was that two runs happened to hit
+    rate-limit errors whose text named the model. ``modelVersion`` resolves the alias,
+    so it answers the question the requested name cannot.
+    """
+    answers = [gemini_answer("[1] bir"), gemini_answer("[2] iki")]
+    client = FakeHttpClient(answers)
+    translator = make_gemini(client, gemini_model="gemini-flash-latest")
+
+    with caplog.at_level(logging.INFO, logger="book_translator.translators.gemini"):
+        await translator.translate(["one"], request())
+        await translator.translate(["two"], request(chunk_id=2))
+
+    lines = [r for r in caplog.records if getattr(r, "event", None) == "provider_model"]
+    assert len(lines) == 1, "the served model is logged once, not once per batch"
+    assert "gemini-3.8-flash" in lines[0].getMessage()  # what answered
+    assert "gemini-flash-latest" in lines[0].getMessage()  # what was asked for
+
+
+async def test_a_model_switch_mid_run_is_recorded_too(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Two different answers must not be silently attributed to one model."""
+    first = gemini_answer("[1] bir")
+    second = gemini_answer("[1] iki")
+    second.payload["modelVersion"] = "gemini-3.9-flash"
+    translator = make_gemini(FakeHttpClient([first, second]))
+
+    with caplog.at_level(logging.INFO, logger="book_translator.translators.gemini"):
+        await translator.translate(["one"], request())
+        await translator.translate(["two"], request(chunk_id=2))
+
+    served = [
+        r.getMessage() for r in caplog.records if getattr(r, "event", None) == "provider_model"
+    ]
+    assert len(served) == 2
+    assert "gemini-3.8-flash" in served[0] and "gemini-3.9-flash" in served[1]

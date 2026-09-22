@@ -552,3 +552,87 @@ birleşim 961, hepsi `approved` ve hedefi dolu. Kayıp yok.
 DeepL tarafında bu koşta harcanan 571.409 karakter geri alınamaz. Sözlüğün
 uygulanmadığı ikinci kez oldu (ilki `_glossary_entries`in identity girdilerini
 düşürmesiydi) — sözlük yolu her değişiklikten sonra küçük bir koşuyla doğrulanmalı.
+
+## 2026-09-22 — Gemini sağlayıcısı, ve ölçülen model seçimi
+
+DeepL bitti: Developer planı tek seferlik 1.000.000 karakter, sıfırlanmıyor, tükendi.
+Ve o 1 milyonun 571 bini sözlük hiç uygulanmadan harcandı. Sözlüğü gerçekten uygulayan
+tek yol talimat okuyan bir model olduğu için Gemini yazıldı.
+
+### `src/translators/gemini.py`
+
+`BaseLLMTranslator`'dan türer, yani sözlük prompt'a giriyor (`GlossaryStrategy.PROMPT`)
+— DeepL'in yüklenen sözlüğünün ve Cloud Translation v2'nin sözlüksüzlüğünün aksine.
+Anahtar `x-goog-api-key` başlığında, sorgu dizesinde değil.
+
+### Canlı denemede çıkan üç hata
+
+1. **`llm_base.py:46` harf duyarlı terim eşleşmesi.** Cümle başındaki terim prompt'a
+   hiç girmiyordu. Kontrollü deney: üç cümlede üç terim, sadece cümle ortasındaki
+   prompt'a girdi ve sadece o korundu (1/3). Casefold sonrası 3/3.
+2. **429'un `quotaId`'ye göre sınıflandırılması.** Google `GenerateRequestsPerDay...`
+   yazıyor ama `retryDelay: 45s` ve bir dakikada geçiyor. "Günlük kota" sayıp işi
+   durduruyordum. Artık karar `retryDelay`'e göre (`_MAX_WAITABLE_DELAY_S = 300`).
+   HTTP 402 (kredi bitti) ayrı ve her zaman iş-öldürücü — canlıda gözlendi.
+3. **`--fallback-provider none` çalışmıyordu.** `"none"` truthy olduğu için
+   `requested or ...` onu sağlayıcı adı sanıyordu → "unknown provider 'none'".
+   Yedeği kapatmak tam da ücretli bir sağlayıcıdan kaçınmak için kullanılır.
+   `_resolve_fallback` ile orchestrator'da çözülüyor.
+
+### Model karşılaştırması — 120 birim, aynı sözlük, aynı metin
+
+| | DeepL | **3.8-flash** | 3.5-flash-lite | 3.1-pro |
+|---|---|---|---|---|
+| terim korunumu | %26 | %95 | %99 | %98 |
+| uzunluk medyan | 1,050 | 1,046 | 1,054 | 1,035 |
+| 0,75 altı | 0 | 0 | 0 | 0 |
+| fazla büyük harf /10k | 157 | **119** | 418 | 468 |
+
+Hiçbiri paragraf kısaltmıyor — LLM'den en çok korkulan şey ölçülüp elenmiş oldu.
+Ayrışan tek şey büyük harf. Flash-lite ayrıca terimleri Markdown ile sarıp Türkçe eki
+gövdeden koparıyor (`**Özellik**leri`, `**Görüntü** nüzün`). Pro hem daha kötü hem
+birkaç kat pahalı.
+
+**Büyük harf metriği abartıyor:** işaretlenenlere teker teker bakıldı, iki iyi sütunda
+çoğu meşru (kitap bölüm başlığı, özel isim, kod içi dize). Modeller arası sıralama
+geçerli çünkü aynı metne aynı ölçüt uygulanıyor. Bu kusur ilk raporda olduğundan
+ciddi gösterildi.
+
+Kontrol deneyi: düşünme modu açıldığında (`THINKING_BUDGET=-1`) flash 3.8'de büyük harf
+119→116, yani kusur moda değil modele ait.
+
+**Karar: `gemini-3.8-flash`, takma ad değil sabit sürüm.**
+
+### Model kaydı
+
+35 sayfalık deneme çıktısı üç farklı modelin karışımı çıktı (3.6 / 3.7 / alias) ve bunu
+ancak iki koşunun kota hatasının metninde model adı geçtiği için çıkarabildim.
+Veritabanında model kolonu yok. API her cevapta `modelVersion` döndürüyor ve takma adı
+çözüyor; artık koşu başına bir kez INFO seviyesinde loglanıyor (`event=provider_model`).
+
+### Maliyet — ölçülen
+
+Sayfa başına ~750 girdi + ~442 çıktı token. 1000 sayfa:
+
+| | $ | TL (48,8) |
+|---|---|---|
+| 3.8-flash | 2,22 | ~108 |
+| 3.5-flash-lite | 1,33 | ~65 |
+| 3.1-pro | ~5 | ~245 |
+
+Prompt ek yükü varsayılan ayarda **2,1 kat** çıktı, çünkü overlay batch'i sayfa
+sınırında kesiliyor (`overlay_batch_min_chars=1000`) ve her istek ~1.700 karakter
+taşıyor; talimat+sözlük bloğu her seferinde tekrarlanıyor. 5000'e çıkarılınca ~1,3.
+
+### Font
+
+Kitabın gömülü fontları kullanılamaz: dokuzu da subset (`MPDFAA+`), 98–107 glif,
+**hiçbirinde Türkçe harf yok**. Ama adları duruyor ve tam sürümleri Windows'ta kurulu
+(Palatino Linotype 1328 glif, Türkçe tam). `--pdf-font C:/Windows/Fonts/pala.ttf`
+bugün çalışıyor ve gövdeyi orijinal tipografiye getiriyor — ama tek font hem serif hem
+sans yerine geçtiği için başlıklar da serif oluyor. Tam çözüm blok başına eşleme
+(serif→Palatino, sans→Arial, mono→Consolas); `family` kolonu zaten mevcut.
+
+### Doğrulama
+
+906 test geçti, `mypy src` temiz (67 dosya), `ruff` temiz.

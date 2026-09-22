@@ -46,7 +46,7 @@ from typing import (
     TypeVar,
 )
 
-from ..config import Settings
+from ..config import OFF_FALLBACK, Settings
 from ..database.repository import (
     UNSET,
     ChunkRepository,
@@ -1685,6 +1685,20 @@ class Orchestrator:
             entries = merge_with_precedence(entries, user.value)
         return Ok(effective_glossary(entries))
 
+    def _resolve_fallback(self, requested: Optional[str]) -> Optional[str]:
+        """The provider to fall back to, with ``"none"`` meaning *no fallback*.
+
+        ``OFF_FALLBACK`` is a truthy string, so taking ``requested or ...`` passed it
+        on as if it were a provider name and the run died with "unknown provider
+        'none'". Disabling the fallback is exactly what a user does to keep a run off a
+        paid second provider, so it has to be the reliable path.
+        """
+        if requested == OFF_FALLBACK:
+            return None
+        if requested is not None:
+            return requested
+        return self.settings.effective_fallback_provider()
+
     # ------------------------------------------------------------------ #
     # Stage: translate (5.1-5.8)
     # ------------------------------------------------------------------ #
@@ -1745,9 +1759,7 @@ class Orchestrator:
                 result = await self._translate_bound(
                     bound,
                     provider=provider or self.settings.provider,
-                    fallback_provider=(
-                        fallback_provider or self.settings.effective_fallback_provider()
-                    ),
+                    fallback_provider=self._resolve_fallback(fallback_provider),
                     user_glossary=user_glossary,
                     retry_failed=retry_failed,
                     allow_provider_switch=allow_provider_switch,

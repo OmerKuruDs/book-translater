@@ -79,7 +79,12 @@ from .pipeline.orchestrator import (
     exit_code_for,
     summary_to_jsonable,
 )
-from .translators.base import GlossaryCleanup, get_translator, list_translators
+from .translators.base import (
+    GlossaryCleanup,
+    TranslatorCapabilities,
+    get_translator,
+    list_translators,
+)
 
 __all__ = ["app", "main"]
 
@@ -102,6 +107,7 @@ app = typer.Typer(
 
 class ProviderChoice(str, Enum):
     deepl = "deepl"
+    gemini = "gemini"
     google = "google"
     local = "local"
 
@@ -110,6 +116,7 @@ class FallbackChoice(str, Enum):
     """``--fallback-provider``: the providers plus an explicit off switch."""
 
     deepl = "deepl"
+    gemini = "gemini"
     google = "google"
     local = "local"
     none = "none"
@@ -1478,6 +1485,19 @@ def _print_listing(common: _Common, title: str, rows: List[Dict[str, Any]]) -> N
     Console(force_terminal=None, legacy_windows=False).print(table)
 
 
+def _glossary_support(caps: TranslatorCapabilities) -> str:
+    """How the provider applies the glossary, which is not a two-way choice.
+
+    A native glossary is uploaded, a prompt glossary is written into every request,
+    and only the third case leaves the terms to the post-check alone.
+    """
+    if caps.supports_glossary:
+        return "native"
+    if caps.glossary_in_prompt:
+        return "in prompt"
+    return "post-check only"
+
+
 @app.command()
 def providers(json_output: bool = JSON_OPTION) -> None:
     """List translation providers and whether they can be used right now."""
@@ -1492,7 +1512,7 @@ def providers(json_output: bool = JSON_OPTION) -> None:
         if isinstance(made, Ok):
             caps = made.value.capabilities
             detail = (
-                f"glossary={'native' if caps.supports_glossary else 'post-check only'}, "
+                f"glossary={_glossary_support(caps)}, "
                 f"max_chars={caps.max_chars_per_request}"
             )
             rows.append({"name": name, "available": True, "detail": detail})

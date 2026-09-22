@@ -39,6 +39,10 @@ class TranslatorCapabilities:
     max_texts_per_request: int
     supports_context: bool  # read-only context field (LLM providers)
     supports_tag_protection: bool  # XML tag ignore (DeepL) vs sentinel tokens
+    # A prompt-driven provider has no glossary endpoint but still applies the terms,
+    # because they are written into the prompt. Without this the two cases look
+    # identical from outside, and "no native glossary" reads as "no glossary".
+    glossary_in_prompt: bool = False
 
 
 @dataclass(frozen=True)
@@ -201,11 +205,13 @@ class BaseTranslator(ABC):
 def _registry() -> Dict[str, Type[BaseTranslator]]:
     # Imported lazily: the concrete modules import this one.
     from .deepl_translator import DeepLTranslator
+    from .gemini import GeminiTranslator
     from .google_translate import GoogleTranslator
     from .local_nmt import LocalNMTTranslator
 
     return {
         DeepLTranslator.name: DeepLTranslator,
+        GeminiTranslator.name: GeminiTranslator,
         GoogleTranslator.name: GoogleTranslator,
         LocalNMTTranslator.name: LocalNMTTranslator,
     }

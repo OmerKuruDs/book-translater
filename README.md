@@ -14,7 +14,8 @@ Two modes:
 Every stage is resumable: progress lives in `<output>/translation_state.db`, so an interrupted
 run continues where it stopped and never pays for the same characters twice.
 
-Provider: DeepL. Design documents and the full engineering history are in `docs/`.
+Providers: DeepL, Google Cloud Translation, Gemini, or a local model. Design documents
+and the full engineering history are in `docs/`.
 
 ## Status
 
@@ -216,6 +217,83 @@ python -m venv .venv
 `--fresh` archives the previous state into `<output>/state-archive/<timestamp>/`; archives are
 never pruned automatically.
 
+
+
+## Providers
+
+| `--provider` | Credential | Glossary | Notes |
+|---|---|---|---|
+| `deepl` (default) | `DEEPL_API_KEY` | native (uploaded) | XML tag protection; the free tier is 500 000 characters a month |
+| `google` | `GOOGLE_CLOUD_API` | post-check only | Cloud Translation **v2**: an API key works, but v2 has no glossary at all |
+| `gemini` | `GEMINI_API_KEY` | **in the prompt** | prompt-driven, so the terminology travels with every request |
+| `local` | none | post-check only | offline CTranslate2 model, `pip install "book-translator[local]"` |
+
+`book-translator providers` prints this for *your* machine, including whether each key is set.
+
+### Gemini
+
+The NMT engines either upload a glossary (DeepL) or have none (Cloud Translation v2). Gemini
+is prompt-driven: the terms the batch actually contains are written into every request, so
+the vocabulary works with no provider-side setup. A run reports `glossary_strategy: prompt`.
+
+| Setting (`BOOK_TRANSLATOR_…`) | Default | What it does |
+|---|---|---|
+| `GEMINI_MODEL` | `gemini-3.8-flash` | Any name the API's `models` endpoint lists. Pinned, not an alias: an alias moves and the output then has no record of what produced it. See the comparison below. |
+| `GEMINI_THINKING_BUDGET` | `0` | Output tokens the model may spend reasoning first. Translation does not need it and output tokens are the expensive half of the bill. `-1` omits the field for models that reject it. |
+
+#### Which model
+
+Measured on 120 units of one book (OpenCV, EN→TR), same glossary, against the DeepL
+translation of the same units:
+
+| | DeepL (no glossary) | **gemini-3.8-flash** | gemini-3.5-flash-lite | gemini-3.1-pro-preview |
+|---|---|---|---|---|
+| Glossary terms kept in English | 26% | 95% | 99% | 98% |
+| Length ratio (median) | 1.050 | 1.046 | 1.054 | 1.035 |
+| Shortest unit | 0.836 | 0.836 | 0.850 | 0.865 |
+| Units below 0.75 | 0 | 0 | 0 | 0 |
+| Stray capitals per 10 000 words | 157 | **119** | 418 | 468 |
+
+All three keep the terminology and none shortens a paragraph — the length floor is the
+guard against an LLM quietly condensing text, and nothing came near it. They differ on
+Turkish capitalisation, and flash-lite additionally wraps terms in Markdown markers that
+split a suffix off its stem (`**Özellik**leri`, `**Görüntü** nüzün`), which is a real
+defect in an agglutinative language. Pro was worse than flash and several times dearer.
+
+The stray-capital count over-reads: it cannot tell a book title or a proper noun from a
+mistake, and most of what it flags in the two best columns is legitimate. The ranking
+between models still holds, because the same metric is applied to the same text.
+
+Turning thinking on (`GEMINI_THINKING_BUDGET=-1`) moved terminology from 95% to 98% and
+left capitalisation unchanged, at the price of billed reasoning tokens.
+
+Cost, from the tokens this pipeline actually sent (~750 input and ~440 output tokens per
+page): about **$2.20 per 1 000 pages** on `gemini-3.8-flash`. Raising
+`OVERLAY_BATCH_MIN_CHARS` cuts it further — see below.
+
+The key travels in the `x-goog-api-key` header, never in the query string — a URL ends up in
+proxy logs and in exception text.
+
+Billing is worth one warning: **HTTP 402 (“prepayment credits are depleted”) arrives with the
+same `RESOURCE_EXHAUSTED` status as a rate limit.** It is treated as a job-fatal quota error,
+so the run pauses and hands over to the fallback provider instead of retrying an empty wallet
+twenty times.
+
+#### Batch size and what it costs
+
+An overlay batch stops at a page boundary once it holds `OVERLAY_BATCH_MIN_CHARS`
+characters (default 1 000), so a request usually carries one page — about seven units
+and 1 700 characters, against the 8 000 the provider accepts. The instructions and the
+terminology block ride along with *every* request, so small batches repeat that overhead:
+measured at 2.1x the payload on a default run, against ~1.3x when batches are packed to
+5 000 characters. On a prompt-driven provider that is money.
+
+```
+BOOK_TRANSLATOR_OVERLAY_BATCH_MIN_CHARS=5000
+```
+
+It also decides how many requests a book needs, which matters on a rate-limited key: at
+the default, requests ≈ pages.
 
 ## Keeping technical terms in English
 

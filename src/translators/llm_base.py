@@ -41,9 +41,15 @@ _INSTRUCTIONS = (
 def build_prompt(texts: Sequence[str], glossary: EffectiveGlossary) -> str:
     """Instructions + terminology block limited to the entries that occur in ``texts``."""
     joined = "\n".join(texts)
+    # Case-folded, because this check decides whether a term is *shown* to the model
+    # at all. Matching exactly dropped every term that opened a sentence or a heading:
+    # measured live, of three glossary terms only the one sitting mid-sentence reached
+    # the prompt, and only that one survived. The pair is still listed in its glossary
+    # spelling, which is the form the model is asked to produce.
+    haystack = joined.casefold()
     terms: List[str] = []
     for entry in glossary.entries:  # already longest-source-first
-        if entry.source and entry.target and entry.source in joined:
+        if entry.source and entry.target and entry.source.casefold() in haystack:
             terms.append(f"{entry.source} ⇒ {entry.target}")
             if len(terms) >= MAX_PROMPT_TERMS:
                 break
@@ -89,6 +95,7 @@ class BaseLLMTranslator(BaseTranslator):
         max_texts_per_request=40,
         supports_context=True,
         supports_tag_protection=False,
+        glossary_in_prompt=True,
     )
 
     def __init__(self) -> None:

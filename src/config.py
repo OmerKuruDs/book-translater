@@ -19,9 +19,9 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from .domain.result import Err, ErrorCode, ErrorScope, Ok, Result, err
 
-ProviderName = Literal["deepl", "local", "google"]
-_PROVIDER_NAMES: Tuple[str, ...] = ("deepl", "local", "google")
-_AUTO_FALLBACK_ORDER: Tuple[ProviderName, ...] = ("google", "deepl")
+ProviderName = Literal["deepl", "local", "google", "gemini"]
+_PROVIDER_NAMES: Tuple[str, ...] = ("deepl", "local", "google", "gemini")
+_AUTO_FALLBACK_ORDER: Tuple[ProviderName, ...] = ("google", "deepl", "gemini")
 """Order an automatic fallback is picked from: a hosted provider whose key is configured.
 ``local`` is never chosen automatically - it needs a downloaded model and changes the
 output quality far more than a second hosted engine does."""
@@ -29,16 +29,27 @@ ExtractorName = Literal["pymupdf", "marker"]
 LogLevel = Literal["DEBUG", "INFO", "WARNING", "ERROR"]
 PdfEngine = Literal["native", "weasyprint"]
 
+GEMINI_DEFAULT_MODEL = "gemini-3.8-flash"
+"""Default ``--provider gemini`` model; override with BOOK_TRANSLATOR_GEMINI_MODEL."""
+
+OFF_FALLBACK = "none"
+"""``--fallback-provider`` value meaning *do not fall back at all*."""
+
 SOURCE_PAGE_SIZE = "source"
 """``--pdf-page-size`` / ``--pdf-margin`` value meaning "as in the source PDF" (Addendum A)."""
 
-PROVIDER_KEY_ENV: Dict[str, str] = {"deepl": "DEEPL_API_KEY", "google": "GOOGLE_CLOUD_API"}
+PROVIDER_KEY_ENV: Dict[str, str] = {
+    "deepl": "DEEPL_API_KEY",
+    "google": "GOOGLE_CLOUD_API",
+    "gemini": "GEMINI_API_KEY",
+}
 """Credential each provider needs; ``local`` needs none (it runs offline)."""
 
 
 _ENV_OF_FIELD: Dict[str, str] = {
     "deepl_api_key": "DEEPL_API_KEY",
     "google_cloud_api": "GOOGLE_CLOUD_API",
+    "gemini_api_key": "GEMINI_API_KEY",
 }
 
 
@@ -60,6 +71,16 @@ class Settings(BaseSettings):
     google_cloud_api: Optional[SecretStr] = Field(
         default=None, validation_alias="GOOGLE_CLOUD_API"
     )
+
+    # Generative Language API key ("AIza..."), the prompt-driven provider. Unlike the
+    # NMT engines it applies the glossary from the prompt, so terminology works without
+    # any provider-side upload.
+    gemini_api_key: Optional[SecretStr] = Field(default=None, validation_alias="GEMINI_API_KEY")
+    gemini_model: str = Field(default=GEMINI_DEFAULT_MODEL, min_length=1)
+    #: Output tokens the model may spend reasoning before answering. Translation does
+    #: not need it and output tokens are the expensive half of the bill; ``-1`` omits
+    #: the field for models that reject it.
+    gemini_thinking_budget: int = Field(default=0, ge=-1)
 
     provider: ProviderName = "deepl"
     fallback_provider: Optional[str] = None
@@ -114,7 +135,7 @@ class Settings(BaseSettings):
     pdf_page_size: str = Field(default=SOURCE_PAGE_SIZE, min_length=1)
     pdf_margin: str = SOURCE_PAGE_SIZE  # "source" or 1, 2 or 4 CSS-style values (mm / pt)
 
-    @field_validator("deepl_api_key", "google_cloud_api")
+    @field_validator("deepl_api_key", "google_cloud_api", "gemini_api_key")
     @classmethod
     def _key_shape(cls, value: Optional[SecretStr], info: ValidationInfo) -> Optional[SecretStr]:
         """Shape check only: the name of the variable is reported, never its value."""
@@ -134,6 +155,7 @@ class Settings(BaseSettings):
         present = {
             "DEEPL_API_KEY": self.deepl_api_key,
             "GOOGLE_CLOUD_API": self.google_cloud_api,
+            "GEMINI_API_KEY": self.gemini_api_key,
         }[env]
         return None if present is not None else env
 
@@ -166,7 +188,7 @@ class Settings(BaseSettings):
         change and gets no error. ``fallback_provider="none"`` disables it.
         """
         chosen = self.fallback_provider
-        if chosen == "none":
+        if chosen == OFF_FALLBACK:
             return None
         if chosen is not None:
             return cast(ProviderName, chosen)
@@ -178,7 +200,7 @@ class Settings(BaseSettings):
     def validate_fallback_provider(self) -> Result[None]:
         """An explicit ``--fallback-provider`` must name a *different*, usable provider."""
         fallback = self.fallback_provider
-        if fallback is None or fallback == "none":
+        if fallback is None or fallback == OFF_FALLBACK:
             return Ok(None)
         if fallback not in _PROVIDER_NAMES:
             return err(
