@@ -653,3 +653,13 @@ def test_a_file_path_is_not_a_directory(tmp_path: Path, overlay_pdfs: Dict[str, 
 
     assert refused.status_code == 400
     assert a_file.read_text(encoding="utf-8") == "x"
+
+
+def test_the_form_sections_are_numbered_in_order(tmp_path: Path) -> None:
+    """Inserting a step is easy; renumbering the one after it is easy to forget."""
+    import re
+
+    page = make_client(tmp_path).get("/").text
+    # Step 1 is the drop zone (an <h2>); the rest are <legend>s.
+    numbers = [int(n) for n in re.findall(r"<(?:h2|legend)>(\d+) &middot;", page)]
+    assert numbers == list(range(1, len(numbers) + 1)), numbers
