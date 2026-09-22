@@ -39,7 +39,6 @@ docs/*/
 
 # upstream source of the curated term list: a verbatim copy of Google's Machine
 # Learning Glossary (CC BY 4.0). Only the derived JSON is tracked, with attribution.
-glossaries/Machine-Learning-Glossary.md
 
 # web UI job directories (uploaded PDFs and their output)
 web-jobs/

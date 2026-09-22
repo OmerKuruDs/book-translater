@@ -302,22 +302,25 @@ Machine translation turns established jargon into literal Turkish: *computer vis
 "sıfır örneklemeyle algılama". Readers who learned the field in English find that harder to
 follow, not easier.
 
-A glossary entry whose `target` equals its `source` tells the provider to leave the term alone.
-Two ready-made lists ship with the repo:
-
-| File | Terms | Scope |
-|---|---|---|
-| `glossaries/computer-vision.en-tr.json` | 239 | hand-written computer-vision list, all kept in English |
-| `glossaries/ai-ml.en-tr.json` | 961 | the above, the term names of Google's ML Glossary, and 154 terms given a fixed Turkish wording |
-
-The second file mixes both uses: 807 entries map a term to itself (keep it in English) and
-154 prescribe a Turkish word (`Matrix` → `Matris`, `Pixel` → `Piksel`). Where the two
-sources disagreed - `Convolution`, `Tensor`, `Edge Detection`, `Downsampling` and 92 others -
-the English-keeping entry won.
+A glossary entry whose `target` equals its `source` tells the provider to leave the term
+alone. One ready-made list ships with the repo, `glossaries/terms.en-tr.json`, with **987
+entries**: 809 map a term to itself (keep it in English) and 178 prescribe a Turkish word
+(`matrix` → `matris`, `pixel` → `piksel`). It is the union of a hand-written
+computer-vision list, the term names of Google's ML Glossary and a hand-written
+linear-algebra/ML sheet. Where the sources disagreed - `convolution`, `tensor`,
+`edge detection`, `downsampling` and 78 others - the English-keeping entry won.
 
 ```
-book-translator run -i book.pdf -o out --mode overlay     --glossary glossaries/ai-ml.en-tr.json
+book-translator run -i book.pdf -o out --mode overlay     --glossary glossaries/terms.en-tr.json
 ```
+
+**Write Turkish targets in lower case.** The prompt tells a prompt-driven provider to use
+the listed term *exactly*, so a target spelled `Özellik` comes back capitalised in the
+middle of a sentence. Every wrongly capitalised word observed in a translated book -
+"bir Özellik türüdür", "Etiket (sayısal ID)", "Girdi Görüntünüzün" - was a glossary target
+with a capital, and the model was obeying rather than misbehaving. Acronyms and names
+(`RGB`, `Bayes kuralı`) keep their capitals; a sentence-initial term is capitalised by the
+model itself.
 
 Measured on real book text, same sentence:
 
@@ -396,7 +399,7 @@ the same command resumes it. Nothing is lost and nothing is paid for twice.
 
 ## Licence
 
-`glossaries/ai-ml.en-tr.json` derives part of its term list from Google's Machine Learning
+`glossaries/terms.en-tr.json` derives part of its term list from Google's Machine Learning
 Glossary (<https://developers.google.com/machine-learning/glossary>), published under
 CC BY 4.0. Only the term names are used, each mapped to itself; the definitions are not
 redistributed.

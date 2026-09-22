@@ -1,0 +1,5022 @@
+{
+  "version": 1,
+  "source_lang": "en",
+  "target_lang": "tr",
+  "generated_at": "2026-09-21T11:35:21.979520Z",
+  "_about": "Terms kept in English on purpose: each source maps to itself. Curated union of a hand-written computer-vision list and the term names of Google's Machine Learning Glossary (developers.google.com/machine-learning/glossary), which is published under CC BY 4.0. Single generic words were dropped on purpose - keeping words like 'cost', 'depth' or 'baseline' in English damages ordinary prose. A third group (note \"user-xlsx\") comes from a hand-made spreadsheet and prescribes a Turkish wording instead of keeping the term in English; where the two disagreed, the English-keeping entry won.",
+  "entries": [
+    {
+      "source": "Reading Comprehension with Commonsense Reasoning Dataset (ReCoRD)",
+      "target": "Reading Comprehension with Commonsense Reasoning Dataset (ReCoRD)",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "BLEURT (Bilingual Evaluation Understudy from Transformers)",
+      "target": "BLEURT (Bilingual Evaluation Understudy from Transformers)",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "ROUGE (Recall-Oriented Understudy for Gisting Evaluation)",
+      "target": "ROUGE (Recall-Oriented Understudy for Gisting Evaluation)",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "depthwise separable convolutional neural network (sepCNN)",
+      "target": "depthwise separable convolutional neural network (sepCNN)",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "empirical cumulative distribution function (eCDF or",
+      "target": "empirical cumulative distribution function (eCDF or",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "Typologically Diverse Question Answering (TyDi QA)",
+      "target": "Typologically Diverse Question Answering (TyDi QA)",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "Reinforcement Learning from Human Feedback (RLHF)",
+      "target": "Reinforcement Learning from Human Feedback (RLHF)",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "independently and identically distributed (i.i.d)",
+      "target": "independently and identically distributed (i.i.d)",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "self-attention (also called self-attention layer)",
+      "target": "self-attention (also called self-attention layer)",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "LaMDA (Language Model for Dialogue Applications)",
+      "target": "LaMDA (Language Model for Dialogue Applications)",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "Multi-sentence Reading Comprehension (MultiRC)",
+      "target": "Multi-sentence Reading Comprehension (MultiRC)",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "ROC (receiver operating characteristic) Curve",
+      "target": "ROC (receiver operating characteristic) Curve",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "Weighted Alternating Least Squares (WALS)",
+      "target": "Weighted Alternating Least Squares (WALS)",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "GPT (Generative Pre-trained Transformer)",
+      "target": "GPT (Generative Pre-trained Transformer)",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "Choice of Plausible Alternatives (COPA)",
+      "target": "Choice of Plausible Alternatives (COPA)",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "gradient boosted (decision) trees (GBT)",
+      "target": "gradient boosted (decision) trees (GBT)",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "BLEU (Bilingual Evaluation Understudy)",
+      "target": "BLEU (Bilingual Evaluation Understudy)",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "Kernel Support Vector Machines (KSVMs)",
+      "target": "Kernel Support Vector Machines (KSVMs)",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "cumulative distribution function (CDF)",
+      "target": "cumulative distribution function (CDF)",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "mini-batch stochastic gradient descent",
+      "target": "mini-batch stochastic gradient descent",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "out-of-bag evaluation (OOB evaluation)",
+      "target": "out-of-bag evaluation (OOB evaluation)",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "unawareness (to a sensitive attribute)",
+      "target": "unawareness (to a sensitive attribute)",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "single program / multiple data (SPMD)",
+      "target": "single program / multiple data (SPMD)",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "Learning Interpretability Tool (LIT)",
+      "target": "Learning Interpretability Tool (LIT)",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "Recognizing Textual Entailment (RTE)",
+      "target": "Recognizing Textual Entailment (RTE)",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "generative adversarial network (GAN)",
+      "target": "generative adversarial network (GAN)",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "retrieval-augmented generation (RAG)",
+      "target": "retrieval-augmented generation (RAG)",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "Mostly Basic Python Problems (MBPP)",
+      "target": "Mostly Basic Python Problems (MBPP)",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "incompatibility of fairness metrics",
+      "target": "incompatibility of fairness metrics",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "mean average precision at k (mAP@k)",
+      "target": "mean average precision at k (mAP@k)",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "structural risk minimization (SRM)",
+      "target": "structural risk minimization (SRM)",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "contextualized language embedding",
+      "target": "contextualized language embedding",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "empirical risk minimization (ERM)",
+      "target": "empirical risk minimization (ERM)",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "stochastic gradient descent (SGD)",
+      "target": "stochastic gradient descent (SGD)",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "Neural Architecture Search (NAS)",
+      "target": "Neural Architecture Search (NAS)",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "PR AUC (area under the PR curve)",
+      "target": "PR AUC (area under the PR curve)",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "XLA (Accelerated Linear Algebra)",
+      "target": "XLA (Accelerated Linear Algebra)",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "feedforward neural network (FFN)",
+      "target": "feedforward neural network (FFN)",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "permutation variable importances",
+      "target": "permutation variable importances",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "Character N-gram F-score (ChrF)",
+      "target": "Character N-gram F-score (ChrF)",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "Winograd Schema Challenge (WSC)",
+      "target": "Winograd Schema Challenge (WSC)",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "artificial general intelligence",
+      "target": "artificial general intelligence",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "multi-class logistic regression",
+      "target": "multi-class logistic regression",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "tree-of-thought prompting (ToT)",
+      "target": "tree-of-thought prompting (ToT)",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "AUC (Area under the ROC curve)",
+      "target": "AUC (Area under the ROC curve)",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "Pathways Language Model (PaLM)",
+      "target": "Pathways Language Model (PaLM)",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "Root Mean Squared Error (RMSE)",
+      "target": "Root Mean Squared Error (RMSE)",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "generative adversarial network",
+      "target": "generative adversarial network",
+      "note": "architecture"
+    },
+    {
+      "source": "natural language understanding",
+      "target": "natural language understanding",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "probabilistic regression model",
+      "target": "probabilistic regression model",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "threshold (for decision trees)",
+      "target": "threshold (for decision trees)",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "Long Short-Term Memory (LSTM)",
+      "target": "Long Short-Term Memory (LSTM)",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "Markov decision process (MDP)",
+      "target": "Markov decision process (MDP)",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "generative agents (simulacra)",
+      "target": "generative agents (simulacra)",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "intersection over union (IoU)",
+      "target": "intersection over union (IoU)",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "optical character recognition",
+      "target": "optical character recognition",
+      "note": "task"
+    },
+    {
+      "source": "unidirectional language model",
+      "target": "unidirectional language model",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "unsupervised machine learning",
+      "target": "unsupervised machine learning",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "variational autoencoder (VAE)",
+      "target": "variational autoencoder (VAE)",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "Extreme Summarization (xsum)",
+      "target": "Extreme Summarization (xsum)",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "Low-Rank Adaptability (LoRA)",
+      "target": "Low-Rank Adaptability (LoRA)",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "Rectified Linear Unit (ReLU)",
+      "target": "Rectified Linear Unit (ReLU)",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "Tensor Processing Unit (TPU)",
+      "target": "Tensor Processing Unit (TPU)",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "bidirectional language model",
+      "target": "bidirectional language model",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "convolutional neural network",
+      "target": "convolutional neural network",
+      "note": "architecture"
+    },
+    {
+      "source": "earth mover's distance (EMD)",
+      "target": "earth mover's distance (EMD)",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "multimodal instruction-tuned",
+      "target": "multimodal instruction-tuned",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "precision at k (precision@k)",
+      "target": "precision at k (precision@k)",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "probability density function",
+      "target": "probability density function",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "proxy (sensitive attributes)",
+      "target": "proxy (sensitive attributes)",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "unsupported-claim rate (UCR)",
+      "target": "unsupported-claim rate (UCR)",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "BERT (Bidirectional Encoder",
+      "target": "BERT (Bidirectional Encoder",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "natural language processing",
+      "target": "natural language processing",
+      "note": "field"
+    },
+    {
+      "source": "reinforcement learning (RL)",
+      "target": "reinforcement learning (RL)",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "state-action value function",
+      "target": "state-action value function",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "stochastic gradient descent",
+      "target": "stochastic gradient descent",
+      "note": "training"
+    },
+    {
+      "source": "supervised machine learning",
+      "target": "supervised machine learning",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "chain-of-thought prompting",
+      "target": "chain-of-thought prompting",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "exploding gradient problem",
+      "target": "exploding gradient problem",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "multi-class classification",
+      "target": "multi-class classification",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "multinomial classification",
+      "target": "multinomial classification",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "no one right answer (NORA)",
+      "target": "no one right answer (NORA)",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "out-group homogeneity bias",
+      "target": "out-group homogeneity bias",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "parameter-efficient tuning",
+      "target": "parameter-efficient tuning",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "vanishing gradient problem",
+      "target": "vanishing gradient problem",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "Boolean Questions (BoolQ)",
+      "target": "Boolean Questions (BoolQ)",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "Mean Absolute Error (MAE)",
+      "target": "Mean Absolute Error (MAE)",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "Multiscale Representation",
+      "target": "çok ölçekli gösterim",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Probability Mass Function",
+      "target": "olasılık kütle fonksiyonu",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Trivia Question Answering",
+      "target": "Trivia Question Answering",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "centroid-based clustering",
+      "target": "centroid-based clustering",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "false positive rate (FPR)",
+      "target": "false positive rate (FPR)",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "lost-in-the-middle effect",
+      "target": "lost-in-the-middle effect",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "multi-agent collaboration",
+      "target": "multi-agent collaboration",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "multi-head self-attention",
+      "target": "multi-head self-attention",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "open-vocabulary detection",
+      "target": "open-vocabulary detection",
+      "note": "task"
+    },
+    {
+      "source": "sampling with replacement",
+      "target": "sampling with replacement",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "sequence-to-sequence task",
+      "target": "sequence-to-sequence task",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "visual question answering",
+      "target": "visual question answering",
+      "note": "task"
+    },
+    {
+      "source": "Mean Squared Error (MSE)",
+      "target": "Mean Squared Error (MSE)",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "Metrics API (tf.metrics)",
+      "target": "Metrics API (tf.metrics)",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "Probability Distribution",
+      "target": "olasılık dağılımı",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "agglomerative clustering",
+      "target": "agglomerative clustering",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "area under the ROC curve",
+      "target": "area under the ROC curve",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "bias (math) or bias term",
+      "target": "bias (math) or bias term",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "class-imbalanced dataset",
+      "target": "class-imbalanced dataset",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "classification threshold",
+      "target": "classification threshold",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "generalized linear model",
+      "target": "generalized linear model",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "human in the loop (HITL)",
+      "target": "human in the loop (HITL)",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "least squares regression",
+      "target": "least squares regression",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "morphological operations",
+      "target": "morphological operations",
+      "note": "imaging"
+    },
+    {
+      "source": "recurrent neural network",
+      "target": "recurrent neural network",
+      "note": "architecture"
+    },
+    {
+      "source": "self-supervised learning",
+      "target": "self-supervised learning",
+      "note": "field"
+    },
+    {
+      "source": "semi-supervised learning",
+      "target": "semi-supervised learning",
+      "note": "field"
+    },
+    {
+      "source": "translational invariance",
+      "target": "translational invariance",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "true positive rate (TPR)",
+      "target": "true positive rate (TPR)",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "Bayesian neural network",
+      "target": "Bayesian neural network",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "Conditional Probability",
+      "target": "koşullu olasılık",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Homogeneous Coordinates",
+      "target": "homojen koordinatlar",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "LLM evaluations (evals)",
+      "target": "LLM evaluations (evals)",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "area under the PR curve",
+      "target": "area under the PR curve",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "artificial intelligence",
+      "target": "artificial intelligence",
+      "note": "field"
+    },
+    {
+      "source": "collaborative filtering",
+      "target": "collaborative filtering",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "convolutional operation",
+      "target": "convolutional operation",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "counterfactual fairness",
+      "target": "counterfactual fairness",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "equality of opportunity",
+      "target": "equality of opportunity",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "function transformation",
+      "target": "function transformation",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "hierarchical clustering",
+      "target": "hierarchical clustering",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "intersection over union",
+      "target": "intersection over union",
+      "note": "metric"
+    },
+    {
+      "source": "k-fold cross validation",
+      "target": "k-fold cross validation",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "least-to-most prompting",
+      "target": "least-to-most prompting",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "node (TensorFlow graph)",
+      "target": "node (TensorFlow graph)",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "non-maximum suppression",
+      "target": "non-maximum suppression",
+      "note": "metric"
+    },
+    {
+      "source": "representation learning",
+      "target": "representation learning",
+      "note": "field"
+    },
+    {
+      "source": "side-by-side evaluation",
+      "target": "side-by-side evaluation",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "variational autoencoder",
+      "target": "variational autoencoder",
+      "note": "architecture"
+    },
+    {
+      "source": "Conditional Generation",
+      "target": "koşullu üretim",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Layers API (tf.layers)",
+      "target": "Layers API (tf.layers)",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "Perspective Projection",
+      "target": "perspektif izdüşüm",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Words in Context (WiC)",
+      "target": "Words in Context (WiC)",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "average precision at k",
+      "target": "average precision at k",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "axis-aligned condition",
+      "target": "axis-aligned condition",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "background subtraction",
+      "target": "background subtraction",
+      "note": "task"
+    },
+    {
+      "source": "bias (ethics/fairness)",
+      "target": "bias (ethics/fairness)",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "bilinear interpolation",
+      "target": "bilinear interpolation",
+      "note": "imaging"
+    },
+    {
+      "source": "class-balanced dataset",
+      "target": "class-balanced dataset",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "dropout regularization",
+      "target": "dropout regularization",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "global average pooling",
+      "target": "global average pooling",
+      "note": "architecture"
+    },
+    {
+      "source": "group attribution bias",
+      "target": "group attribution bias",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "histogram equalization",
+      "target": "histogram equalization",
+      "note": "imaging"
+    },
+    {
+      "source": "knowledge distillation",
+      "target": "knowledge distillation",
+      "note": "training"
+    },
+    {
+      "source": "learning rate schedule",
+      "target": "learning rate schedule",
+      "note": "training"
+    },
+    {
+      "source": "mean average precision",
+      "target": "mean average precision",
+      "note": "metric"
+    },
+    {
+      "source": "multinomial regression",
+      "target": "multinomial regression",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "one right answer (ORA)",
+      "target": "one right answer (ORA)",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "precision-recall curve",
+      "target": "precision-recall curve",
+      "note": "metric"
+    },
+    {
+      "source": "predictive rate parity",
+      "target": "predictive rate parity",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "recall at k (recall@k)",
+      "target": "recall at k (recall@k)",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "reinforcement learning",
+      "target": "reinforcement learning",
+      "note": "field"
+    },
+    {
+      "source": "specificational coding",
+      "target": "specificational coding",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "Bayesian optimization",
+      "target": "Bayesian optimization",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "Dataset API (tf.data)",
+      "target": "Dataset API (tf.data)",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "Linear Transformation",
+      "target": "doğrusal dönüşüm",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Parameter Server (PS)",
+      "target": "Parameter Server (PS)",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "Single View Metrology",
+      "target": "tek görüntüden ölçüm",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "TensorFlow Playground",
+      "target": "TensorFlow Playground",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "Vision-Language Model",
+      "target": "görsel-Dil modeli",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Z-score normalization",
+      "target": "Z-score normalization",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "auto-regressive model",
+      "target": "auto-regressive model",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "binary classification",
+      "target": "binary classification",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "causal language model",
+      "target": "causal language model",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "conversational coding",
+      "target": "conversational coding",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "environment grounding",
+      "target": "environment grounding",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "epsilon greedy policy",
+      "target": "epsilon greedy policy",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "fraction of successes",
+      "target": "fraction of successes",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "fully connected layer",
+      "target": "fully connected layer",
+      "note": "architecture"
+    },
+    {
+      "source": "gradient accumulation",
+      "target": "gradient accumulation",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "hyperparameter tuning",
+      "target": "hyperparameter tuning",
+      "note": "training"
+    },
+    {
+      "source": "instance segmentation",
+      "target": "instance segmentation",
+      "note": "task"
+    },
+    {
+      "source": "inter-rater agreement",
+      "target": "inter-rater agreement",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "masked language model",
+      "target": "masked language model",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "multi-object tracking",
+      "target": "multi-object tracking",
+      "note": "task"
+    },
+    {
+      "source": "node (neural network)",
+      "target": "node (neural network)",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "panoptic segmentation",
+      "target": "panoptic segmentation",
+      "note": "task"
+    },
+    {
+      "source": "partitioning strategy",
+      "target": "partitioning strategy",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "prompt-based learning",
+      "target": "prompt-based learning",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "recommendation system",
+      "target": "recommendation system",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "rotational invariance",
+      "target": "rotational invariance",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "semantic segmentation",
+      "target": "semantic segmentation",
+      "note": "task"
+    },
+    {
+      "source": "sparse representation",
+      "target": "sparse representation",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "structure from motion",
+      "target": "structure from motion",
+      "note": "task"
+    },
+    {
+      "source": "termination condition",
+      "target": "termination condition",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "training-serving skew",
+      "target": "training-serving skew",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "unsupervised learning",
+      "target": "unsupervised learning",
+      "note": "field"
+    },
+    {
+      "source": "Deep Q-Network (DQN)",
+      "target": "Deep Q-Network (DQN)",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "Levenshtein Distance",
+      "target": "Levenshtein Distance",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "Marginal Probability",
+      "target": "marjinal olasılık",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "automatic evaluation",
+      "target": "automatic evaluation",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "autorater evaluation",
+      "target": "autorater evaluation",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "candidate generation",
+      "target": "candidate generation",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "classification model",
+      "target": "classification model",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "constituency parsing",
+      "target": "constituency parsing",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "contrastive learning",
+      "target": "contrastive learning",
+      "note": "field"
+    },
+    {
+      "source": "convenience sampling",
+      "target": "convenience sampling",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "convolutional filter",
+      "target": "convolutional filter",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "differential privacy",
+      "target": "differential privacy",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "discriminative model",
+      "target": "discriminative model",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "extrinsic parameters",
+      "target": "extrinsic parameters",
+      "note": "geometry"
+    },
+    {
+      "source": "generalization curve",
+      "target": "generalization curve",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "image classification",
+      "target": "image classification",
+      "note": "task"
+    },
+    {
+      "source": "intrinsic parameters",
+      "target": "intrinsic parameters",
+      "note": "geometry"
+    },
+    {
+      "source": "large language model",
+      "target": "large language model",
+      "note": "architecture"
+    },
+    {
+      "source": "matrix factorization",
+      "target": "matrix factorization",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "multi-head attention",
+      "target": "multi-head attention",
+      "note": "architecture"
+    },
+    {
+      "source": "node (decision tree)",
+      "target": "node (decision tree)",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "non-binary condition",
+      "target": "non-binary condition",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "ridge regularization",
+      "target": "ridge regularization",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "time series analysis",
+      "target": "time series analysis",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "variable importances",
+      "target": "variable importances",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "CommitmentBank (CB)",
+      "target": "CommitmentBank (CB)",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "Computational Graph",
+      "target": "hesaplama grafiği",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Perceptual Grouping",
+      "target": "algısal gruplama",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "RealToxicityPrompts",
+      "target": "RealToxicityPrompts",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "Semantic Similarity",
+      "target": "anlamsal benzerlik",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "activation function",
+      "target": "activation function",
+      "note": "architecture"
+    },
+    {
+      "source": "agent orchestration",
+      "target": "agent orchestration",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "attention mechanism",
+      "target": "attention mechanism",
+      "note": "architecture"
+    },
+    {
+      "source": "batch normalization",
+      "target": "batch normalization",
+      "note": "architecture"
+    },
+    {
+      "source": "convex optimization",
+      "target": "convex optimization",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "convolutional layer",
+      "target": "convolutional layer",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "data set or dataset",
+      "target": "data set or dataset",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "deep neural network",
+      "target": "deep neural network",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "dimension reduction",
+      "target": "dimension reduction",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "disparate treatment",
+      "target": "disparate treatment",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "divisive clustering",
+      "target": "divisive clustering",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "end-to-end training",
+      "target": "end-to-end training",
+      "note": "training"
+    },
+    {
+      "source": "experimenter's bias",
+      "target": "experimenter's bias",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "fairness constraint",
+      "target": "fairness constraint",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "false negative (FN)",
+      "target": "false negative (FN)",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "false negative rate",
+      "target": "false negative rate",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "false positive (FP)",
+      "target": "false positive (FP)",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "feature engineering",
+      "target": "feature engineering",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "feature importances",
+      "target": "feature importances",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "gesture recognition",
+      "target": "gesture recognition",
+      "note": "task"
+    },
+    {
+      "source": "in-context learning",
+      "target": "in-context learning",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "individual fairness",
+      "target": "individual fairness",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "layer normalization",
+      "target": "layer normalization",
+      "note": "architecture"
+    },
+    {
+      "source": "logistic regression",
+      "target": "logistic regression",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "machine translation",
+      "target": "machine translation",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "multimodal learning",
+      "target": "multimodal learning",
+      "note": "field"
+    },
+    {
+      "source": "positional encoding",
+      "target": "positional encoding",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "regularization rate",
+      "target": "regularization rate",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "scene understanding",
+      "target": "scene understanding",
+      "note": "task"
+    },
+    {
+      "source": "sensitive attribute",
+      "target": "sensitive attribute",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "state machine agent",
+      "target": "state machine agent",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "supervised learning",
+      "target": "supervised learning",
+      "note": "field"
+    },
+    {
+      "source": "wisdom of the crowd",
+      "target": "wisdom of the crowd",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "zero-shot detection",
+      "target": "zero-shot detection",
+      "note": "task"
+    },
+    {
+      "source": "zero-shot prompting",
+      "target": "zero-shot prompting",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "Camera Coordinates",
+      "target": "kamera koordinatları",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Euclidean Distance",
+      "target": "öklid uzaklığı",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Linear Combination",
+      "target": "doğrusal kombinasyon",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Multiview Geometry",
+      "target": "çok görüntülü geometri",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Object Recognition",
+      "target": "nesne tanıma",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Standard Deviation",
+      "target": "standart sapma",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "TensorFlow Serving",
+      "target": "TensorFlow Serving",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "action recognition",
+      "target": "action recognition",
+      "note": "task"
+    },
+    {
+      "source": "attribute sampling",
+      "target": "attribute sampling",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "camera calibration",
+      "target": "camera calibration",
+      "note": "task"
+    },
+    {
+      "source": "candidate sampling",
+      "target": "candidate sampling",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "citation precision",
+      "target": "citation precision",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "continual learning",
+      "target": "continual learning",
+      "note": "field"
+    },
+    {
+      "source": "continuous feature",
+      "target": "continuous feature",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "decision threshold",
+      "target": "decision threshold",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "demographic parity",
+      "target": "demographic parity",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "distribution shift",
+      "target": "distribution shift",
+      "note": "data"
+    },
+    {
+      "source": "exploding gradient",
+      "target": "exploding gradient",
+      "note": "training"
+    },
+    {
+      "source": "feature extraction",
+      "target": "feature extraction",
+      "note": "task"
+    },
+    {
+      "source": "federated learning",
+      "target": "federated learning",
+      "note": "field"
+    },
+    {
+      "source": "few-shot prompting",
+      "target": "few-shot prompting",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "fundamental matrix",
+      "target": "fundamental matrix",
+      "note": "geometry"
+    },
+    {
+      "source": "image registration",
+      "target": "image registration",
+      "note": "task"
+    },
+    {
+      "source": "image segmentation",
+      "target": "image segmentation",
+      "note": "task"
+    },
+    {
+      "source": "imbalanced dataset",
+      "target": "imbalanced dataset",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "instruction tuning",
+      "target": "instruction tuning",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "keypoint detection",
+      "target": "keypoint detection",
+      "note": "task"
+    },
+    {
+      "source": "mixture of experts",
+      "target": "mixture of experts",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "objective function",
+      "target": "objective function",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "one-shot prompting",
+      "target": "one-shot prompting",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "partial derivative",
+      "target": "partial derivative",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "participation bias",
+      "target": "participation bias",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "pass at k (pass@k)",
+      "target": "pass at k (pass@k)",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "post-trained model",
+      "target": "post-trained model",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "prompt engineering",
+      "target": "prompt engineering",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "quantile bucketing",
+      "target": "quantile bucketing",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "region of interest",
+      "target": "region of interest",
+      "note": "imaging"
+    },
+    {
+      "source": "sentiment analysis",
+      "target": "sentiment analysis",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "similarity measure",
+      "target": "similarity measure",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "soft prompt tuning",
+      "target": "soft prompt tuning",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "squared hinge loss",
+      "target": "squared hinge loss",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "tabular Q-learning",
+      "target": "tabular Q-learning",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "task decomposition",
+      "target": "task decomposition",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "true negative (TN)",
+      "target": "true negative (TN)",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "true positive (TP)",
+      "target": "true positive (TP)",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "vanishing gradient",
+      "target": "vanishing gradient",
+      "note": "training"
+    },
+    {
+      "source": "vision transformer",
+      "target": "vision transformer",
+      "note": "architecture"
+    },
+    {
+      "source": "zero-shot learning",
+      "target": "zero-shot learning",
+      "note": "task"
+    },
+    {
+      "source": "Continuous Signal",
+      "target": "sürekli sinyal",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Coordinate System",
+      "target": "koordinat sistemi",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Cross-Correlation",
+      "target": "çapraz korelasyon",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Fourier Transform",
+      "target": "fourier dönüşümü",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Joint Probability",
+      "target": "ortak olasılık",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "L0 regularization",
+      "target": "L0 regularization",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "L1 regularization",
+      "target": "L1 regularization",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "L2 regularization",
+      "target": "L2 regularization",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "Motion Estimation",
+      "target": "hareket tahmini",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "World Coordinates",
+      "target": "dünya koordinatları",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "anomaly detection",
+      "target": "anomaly detection",
+      "note": "task"
+    },
+    {
+      "source": "augmented reality",
+      "target": "augmented reality",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "bundle adjustment",
+      "target": "bundle adjustment",
+      "note": "task"
+    },
+    {
+      "source": "calibration layer",
+      "target": "calibration layer",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "confirmation bias",
+      "target": "confirmation bias",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "convolution layer",
+      "target": "convolution layer",
+      "note": "architecture"
+    },
+    {
+      "source": "data augmentation",
+      "target": "data augmentation",
+      "note": "training"
+    },
+    {
+      "source": "decision boundary",
+      "target": "decision boundary",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "domain adaptation",
+      "target": "domain adaptation",
+      "note": "data"
+    },
+    {
+      "source": "emergent behavior",
+      "target": "emergent behavior",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "epipolar geometry",
+      "target": "epipolar geometry",
+      "note": "geometry"
+    },
+    {
+      "source": "experience replay",
+      "target": "experience replay",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "feature detection",
+      "target": "feature detection",
+      "note": "task"
+    },
+    {
+      "source": "few-shot learning",
+      "target": "few-shot learning",
+      "note": "task"
+    },
+    {
+      "source": "gradient boosting",
+      "target": "gradient boosting",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "gradient clipping",
+      "target": "gradient clipping",
+      "note": "training"
+    },
+    {
+      "source": "image recognition",
+      "target": "image recognition",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "linear regression",
+      "target": "linear regression",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "model parallelism",
+      "target": "model parallelism",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "negative sampling",
+      "target": "negative sampling",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "non-response bias",
+      "target": "non-response bias",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "novelty detection",
+      "target": "novelty detection",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "oblique condition",
+      "target": "oblique condition",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "offline inference",
+      "target": "offline inference",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "one-shot learning",
+      "target": "one-shot learning",
+      "note": "task"
+    },
+    {
+      "source": "outlier detection",
+      "target": "outlier detection",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "pre-trained model",
+      "target": "pre-trained model",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "predictive parity",
+      "target": "predictive parity",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "procedural memory",
+      "target": "procedural memory",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "projection matrix",
+      "target": "projection matrix",
+      "note": "geometry"
+    },
+    {
+      "source": "rank (ordinality)",
+      "target": "rank (ordinality)",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "re-identification",
+      "target": "re-identification",
+      "note": "task"
+    },
+    {
+      "source": "synthetic feature",
+      "target": "synthetic feature",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "transfer learning",
+      "target": "transfer learning",
+      "note": "field"
+    },
+    {
+      "source": "unlabeled example",
+      "target": "unlabeled example",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "Bellman equation",
+      "target": "Bellman equation",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "Frequency Domain",
+      "target": "frekans alanı",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Google AI Studio",
+      "target": "Google AI Studio",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "Hadamard Product",
+      "target": "eleman bazlı çarpım",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "High-Pass Filter",
+      "target": "yüksek geçiren filtre",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Image Derivative",
+      "target": "görüntü türevi",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Wasserstein loss",
+      "target": "Wasserstein loss",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "accelerator chip",
+      "target": "accelerator chip",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "agentic workflow",
+      "target": "agentic workflow",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "autonomous agent",
+      "target": "autonomous agent",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "binary condition",
+      "target": "binary condition",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "categorical data",
+      "target": "categorical data",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "change detection",
+      "target": "change detection",
+      "note": "task"
+    },
+    {
+      "source": "confidence score",
+      "target": "confidence score",
+      "note": "metric"
+    },
+    {
+      "source": "confusion matrix",
+      "target": "confusion matrix",
+      "note": "metric"
+    },
+    {
+      "source": "cross-validation",
+      "target": "cross-validation",
+      "note": "metric"
+    },
+    {
+      "source": "data parallelism",
+      "target": "data parallelism",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "depth estimation",
+      "target": "depth estimation",
+      "note": "task"
+    },
+    {
+      "source": "direct prompting",
+      "target": "direct prompting",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "discrete feature",
+      "target": "discrete feature",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "disparate impact",
+      "target": "disparate impact",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "embedding vector",
+      "target": "embedding vector",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "essential matrix",
+      "target": "essential matrix",
+      "note": "geometry"
+    },
+    {
+      "source": "face recognition",
+      "target": "face recognition",
+      "note": "task"
+    },
+    {
+      "source": "feature matching",
+      "target": "feature matching",
+      "note": "task"
+    },
+    {
+      "source": "foundation model",
+      "target": "foundation model",
+      "note": "architecture"
+    },
+    {
+      "source": "generative model",
+      "target": "generative model",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "gradient descent",
+      "target": "gradient descent",
+      "note": "training"
+    },
+    {
+      "source": "human evaluation",
+      "target": "human evaluation",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "image captioning",
+      "target": "image captioning",
+      "note": "task"
+    },
+    {
+      "source": "image inpainting",
+      "target": "image inpainting",
+      "note": "task"
+    },
+    {
+      "source": "in-set condition",
+      "target": "in-set condition",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "information gain",
+      "target": "information gain",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "interpretability",
+      "target": "interpretability",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "machine learning",
+      "target": "machine learning",
+      "note": "field"
+    },
+    {
+      "source": "multimodal model",
+      "target": "multimodal model",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "nearest neighbor",
+      "target": "nearest neighbor",
+      "note": "imaging"
+    },
+    {
+      "source": "object detection",
+      "target": "object detection",
+      "note": "task"
+    },
+    {
+      "source": "one-hot encoding",
+      "target": "one-hot encoding",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "online inference",
+      "target": "online inference",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "parameter update",
+      "target": "parameter update",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "pretrained model",
+      "target": "pretrained model",
+      "note": "training"
+    },
+    {
+      "source": "regression model",
+      "target": "regression model",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "sigmoid function",
+      "target": "sigmoid function",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "state of the art",
+      "target": "state of the art",
+      "note": "engineering"
+    },
+    {
+      "source": "static inference",
+      "target": "static inference",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "super-resolution",
+      "target": "super-resolution",
+      "note": "task"
+    },
+    {
+      "source": "train/test split",
+      "target": "train/test split",
+      "note": "data"
+    },
+    {
+      "source": "value imputation",
+      "target": "value imputation",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "Attention Score",
+      "target": "attention skoru",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Discrete Signal",
+      "target": "ayrık sinyal",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Einsum notation",
+      "target": "Einsum notation",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "Gaussian Filter",
+      "target": "gauss filtresi",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Gaussian Kernel",
+      "target": "gauss çekirdeği",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Identity Matrix",
+      "target": "birim matris",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Image Embedding",
+      "target": "görüntü embedding'i",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Latent Variable",
+      "target": "gizil değişken",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Low-Pass Filter",
+      "target": "alçak geçiren filtre",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Markov property",
+      "target": "Markov property",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "Principal Point",
+      "target": "ana nokta",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Random Variable",
+      "target": "rastgele değişken",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Synthetic Image",
+      "target": "sentetik görüntü",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Temporal Filter",
+      "target": "zamansal filtre",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "active learning",
+      "target": "active learning",
+      "note": "field"
+    },
+    {
+      "source": "automation bias",
+      "target": "automation bias",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "average pooling",
+      "target": "average pooling",
+      "note": "architecture"
+    },
+    {
+      "source": "backpropagation",
+      "target": "backpropagation",
+      "note": "training"
+    },
+    {
+      "source": "batch inference",
+      "target": "batch inference",
+      "note": "engineering"
+    },
+    {
+      "source": "black box model",
+      "target": "black box model",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "citation recall",
+      "target": "citation recall",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "class imbalance",
+      "target": "class imbalance",
+      "note": "data"
+    },
+    {
+      "source": "computer vision",
+      "target": "computer vision",
+      "note": "field"
+    },
+    {
+      "source": "convex function",
+      "target": "convex function",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "cross-attention",
+      "target": "cross-attention",
+      "note": "architecture"
+    },
+    {
+      "source": "decision forest",
+      "target": "decision forest",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "diffusion model",
+      "target": "diffusion model",
+      "note": "architecture"
+    },
+    {
+      "source": "eager execution",
+      "target": "eager execution",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "embedding layer",
+      "target": "embedding layer",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "embedding space",
+      "target": "embedding space",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "episodic memory",
+      "target": "episodic memory",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "evaluator agent",
+      "target": "evaluator agent",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "fairness metric",
+      "target": "fairness metric",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "feature pyramid",
+      "target": "feature pyramid",
+      "note": "architecture"
+    },
+    {
+      "source": "golden response",
+      "target": "golden response",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "graph execution",
+      "target": "graph execution",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "historical bias",
+      "target": "historical bias",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "image retrieval",
+      "target": "image retrieval",
+      "note": "task"
+    },
+    {
+      "source": "image stitching",
+      "target": "image stitching",
+      "note": "task"
+    },
+    {
+      "source": "input generator",
+      "target": "input generator",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "labeled example",
+      "target": "labeled example",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "lens distortion",
+      "target": "lens distortion",
+      "note": "geometry"
+    },
+    {
+      "source": "loss aggregator",
+      "target": "loss aggregator",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "metric learning",
+      "target": "metric learning",
+      "note": "field"
+    },
+    {
+      "source": "mixed precision",
+      "target": "mixed precision",
+      "note": "training"
+    },
+    {
+      "source": "model cascading",
+      "target": "model cascading",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "nonstationarity",
+      "target": "nonstationarity",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "object tracking",
+      "target": "object tracking",
+      "note": "task"
+    },
+    {
+      "source": "pose estimation",
+      "target": "pose estimation",
+      "note": "task"
+    },
+    {
+      "source": "post-processing",
+      "target": "post-processing",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "prediction bias",
+      "target": "prediction bias",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "prompt chaining",
+      "target": "prompt chaining",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "receptive field",
+      "target": "receptive field",
+      "note": "architecture"
+    },
+    {
+      "source": "rolling shutter",
+      "target": "rolling shutter",
+      "note": "geometry"
+    },
+    {
+      "source": "self-correction",
+      "target": "self-correction",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "semantic memory",
+      "target": "semantic memory",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "size invariance",
+      "target": "size invariance",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "skip connection",
+      "target": "skip connection",
+      "note": "architecture"
+    },
+    {
+      "source": "spatial pooling",
+      "target": "spatial pooling",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "staged training",
+      "target": "staged training",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "stereo matching",
+      "target": "stereo matching",
+      "note": "task"
+    },
+    {
+      "source": "uplift modeling",
+      "target": "uplift modeling",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "validation loss",
+      "target": "validation loss",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "vanishing point",
+      "target": "vanishing point",
+      "note": "geometry"
+    },
+    {
+      "source": "Basis Function",
+      "target": "baz fonksiyonu",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Classification",
+      "target": "sınıflandırma",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Depth of Field",
+      "target": "alan derinliği",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "GenAI or genAI",
+      "target": "GenAI or genAI",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "High Frequency",
+      "target": "yüksek frekans",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Image Gradient",
+      "target": "görüntü gradyanı",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Inverse Matrix",
+      "target": "ters matris",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Matrix Product",
+      "target": "matris çarpımı",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Pinhole Camera",
+      "target": "iğne deliği kamera modeli",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Radiance Field",
+      "target": "radyans alanı",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Representation",
+      "target": "temsil",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Spatial Domain",
+      "target": "uzamsal alan",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Text Embedding",
+      "target": "metin embedding'i",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Video Sequence",
+      "target": "video dizisi",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "XL-Sum (xlsum)",
+      "target": "XL-Sum (xlsum)",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "ablation study",
+      "target": "ablation study",
+      "note": "metric"
+    },
+    {
+      "source": "auxiliary loss",
+      "target": "auxiliary loss",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "context window",
+      "target": "context window",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "crowd counting",
+      "target": "crowd counting",
+      "note": "task"
+    },
+    {
+      "source": "early stopping",
+      "target": "early stopping",
+      "note": "training"
+    },
+    {
+      "source": "edge detection",
+      "target": "edge detection",
+      "note": "task"
+    },
+    {
+      "source": "equalized odds",
+      "target": "equalized odds",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "face detection",
+      "target": "face detection",
+      "note": "task"
+    },
+    {
+      "source": "false negative",
+      "target": "false negative",
+      "note": "metric"
+    },
+    {
+      "source": "false positive",
+      "target": "false positive",
+      "note": "metric"
+    },
+    {
+      "source": "feature vector",
+      "target": "feature vector",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "generalization",
+      "target": "generalization",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "generated text",
+      "target": "generated text",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "golden dataset",
+      "target": "golden dataset",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "hyperparameter",
+      "target": "hyperparameter",
+      "note": "training"
+    },
+    {
+      "source": "inference path",
+      "target": "inference path",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "inference time",
+      "target": "inference time",
+      "note": "engineering"
+    },
+    {
+      "source": "language model",
+      "target": "language model",
+      "note": "architecture"
+    },
+    {
+      "source": "majority class",
+      "target": "majority class",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "minority class",
+      "target": "minority class",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "model capacity",
+      "target": "model capacity",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "model training",
+      "target": "model training",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "negative class",
+      "target": "negative class",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "neural network",
+      "target": "neural network",
+      "note": "architecture"
+    },
+    {
+      "source": "numerical data",
+      "target": "numerical data",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "operation (op)",
+      "target": "operation (op)",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "plan-and-solve",
+      "target": "plan-and-solve",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "positive class",
+      "target": "positive class",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "reference text",
+      "target": "reference text",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "regularization",
+      "target": "regularization",
+      "note": "training"
+    },
+    {
+      "source": "reporting bias",
+      "target": "reporting bias",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "residual block",
+      "target": "residual block",
+      "note": "architecture"
+    },
+    {
+      "source": "role prompting",
+      "target": "role prompting",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "root directory",
+      "target": "root directory",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "selection bias",
+      "target": "selection bias",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "self-attention",
+      "target": "self-attention",
+      "note": "architecture"
+    },
+    {
+      "source": "sequence model",
+      "target": "sequence model",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "shape (Tensor)",
+      "target": "shape (Tensor)",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "sparse feature",
+      "target": "sparse feature",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "style transfer",
+      "target": "style transfer",
+      "note": "task"
+    },
+    {
+      "source": "synthetic data",
+      "target": "synthetic data",
+      "note": "data"
+    },
+    {
+      "source": "target network",
+      "target": "target network",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "top-k accuracy",
+      "target": "top-k accuracy",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "unidirectional",
+      "target": "unidirectional",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "validation set",
+      "target": "validation set",
+      "note": "data"
+    },
+    {
+      "source": "word embedding",
+      "target": "word embedding",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "2D Projection",
+      "target": "2B izdüşüm",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Camera Motion",
+      "target": "kamera hareketi",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Dynamic Range",
+      "target": "dinamik aralık",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Epipolar Line",
+      "target": "epipolar doğru",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Feature Space",
+      "target": "özellik uzayı",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Gaussian blur",
+      "target": "Gaussian blur",
+      "note": "imaging"
+    },
+    {
+      "source": "Gemini models",
+      "target": "Gemini models",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "Interpolation",
+      "target": "enterpolasyon",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Linear Filter",
+      "target": "doğrusal filtre",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Low Frequency",
+      "target": "düşük frekans",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Object Motion",
+      "target": "nesne hareketi",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Sampling Rate",
+      "target": "örnekleme oranı",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Stereo Vision",
+      "target": "stereo görü",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Triangulation",
+      "target": "üçgenleme",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "bidirectional",
+      "target": "bidirectional",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "co-adaptation",
+      "target": "co-adaptation",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "compact model",
+      "target": "compact model",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "concept drift",
+      "target": "concept drift",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "confabulation",
+      "target": "confabulation",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "coverage bias",
+      "target": "coverage bias",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "crash blossom",
+      "target": "crash blossom",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "cross-entropy",
+      "target": "cross-entropy",
+      "note": "training"
+    },
+    {
+      "source": "data analysis",
+      "target": "data analysis",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "data labeling",
+      "target": "data labeling",
+      "note": "data"
+    },
+    {
+      "source": "decision tree",
+      "target": "decision tree",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "deep learning",
+      "target": "deep learning",
+      "note": "field"
+    },
+    {
+      "source": "dense feature",
+      "target": "dense feature",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "derived label",
+      "target": "derived label",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "discriminator",
+      "target": "discriminator",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "disparity map",
+      "target": "disparity map",
+      "note": "geometry"
+    },
+    {
+      "source": "dynamic model",
+      "target": "dynamic model",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "edit distance",
+      "target": "edit distance",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "feature cross",
+      "target": "feature cross",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "featurization",
+      "target": "featurization",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "feedback loop",
+      "target": "feedback loop",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "field of view",
+      "target": "field of view",
+      "note": "geometry"
+    },
+    {
+      "source": "generative AI",
+      "target": "generative AI",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "gini impurity",
+      "target": "gini impurity",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "greedy policy",
+      "target": "greedy policy",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "hallucination",
+      "target": "hallucination",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "hill climbing",
+      "target": "hill climbing",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "image pyramid",
+      "target": "image pyramid",
+      "note": "imaging"
+    },
+    {
+      "source": "implicit bias",
+      "target": "implicit bias",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "in-group bias",
+      "target": "in-group bias",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "label leakage",
+      "target": "label leakage",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "learning rate",
+      "target": "learning rate",
+      "note": "training"
+    },
+    {
+      "source": "loss function",
+      "target": "loss function",
+      "note": "training"
+    },
+    {
+      "source": "manager agent",
+      "target": "manager agent",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "meta-learning",
+      "target": "meta-learning",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "normalization",
+      "target": "normalization",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "predictive ML",
+      "target": "predictive ML",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "preprocessing",
+      "target": "preprocessing",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "prompt design",
+      "target": "prompt design",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "prompt tuning",
+      "target": "prompt tuning",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "pure function",
+      "target": "pure function",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "random forest",
+      "target": "random forest",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "random policy",
+      "target": "random policy",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "rank (Tensor)",
+      "target": "rank (Tensor)",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "replay buffer",
+      "target": "replay buffer",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "sampling bias",
+      "target": "sampling bias",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "self-training",
+      "target": "self-training",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "sparse vector",
+      "target": "sparse vector",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "subword token",
+      "target": "subword token",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "temporal data",
+      "target": "temporal data",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "training loss",
+      "target": "training loss",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "true negative",
+      "target": "true negative",
+      "note": "metric"
+    },
+    {
+      "source": "true positive",
+      "target": "true positive",
+      "note": "metric"
+    },
+    {
+      "source": "undersampling",
+      "target": "undersampling",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "EfficientNet",
+      "target": "EfficientNet",
+      "note": "acronym"
+    },
+    {
+      "source": "Faster R-CNN",
+      "target": "Faster R-CNN",
+      "note": "acronym"
+    },
+    {
+      "source": "Focal Length",
+      "target": "odak uzaklığı",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Forward Pass",
+      "target": "ileri geçiş",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Hidden State",
+      "target": "gizli durum",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Localization",
+      "target": "konumlandırma",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Nyquist Rate",
+      "target": "nyquist oranı",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Optical Axis",
+      "target": "optik eksen",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Optimization",
+      "target": "optimizasyon",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Segmentation",
+      "target": "segmentasyon / bölütleme",
+      "count": 0,
+      "status": "approved",
+      "origin": "user",
+      "note": ""
+    },
+    {
+      "source": "TPU resource",
+      "target": "TPU resource",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "Tensor shape",
+      "target": "Tensor shape",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "action space",
+      "target": "action space",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "agentic loop",
+      "target": "agentic loop",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "aspect ratio",
+      "target": "aspect ratio",
+      "note": "imaging"
+    },
+    {
+      "source": "bag of words",
+      "target": "bag of words",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "bounding box",
+      "target": "bounding box",
+      "note": "data"
+    },
+    {
+      "source": "data leakage",
+      "target": "data leakage",
+      "note": "data"
+    },
+    {
+      "source": "distillation",
+      "target": "distillation",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "domain shift",
+      "target": "domain shift",
+      "note": "data"
+    },
+    {
+      "source": "downsampling",
+      "target": "downsampling",
+      "note": "imaging"
+    },
+    {
+      "source": "feature spec",
+      "target": "feature spec",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "full softmax",
+      "target": "full softmax",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "ground truth",
+      "target": "ground truth",
+      "note": "data"
+    },
+    {
+      "source": "groundedness",
+      "target": "groundedness",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "hidden layer",
+      "target": "hidden layer",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "holdout data",
+      "target": "holdout data",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "latent space",
+      "target": "latent space",
+      "note": "architecture"
+    },
+    {
+      "source": "linear model",
+      "target": "linear model",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "loss surface",
+      "target": "loss surface",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "minimax loss",
+      "target": "minimax loss",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "model router",
+      "target": "model router",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "optical flow",
+      "target": "optical flow",
+      "note": "task"
+    },
+    {
+      "source": "output layer",
+      "target": "output layer",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "oversampling",
+      "target": "oversampling",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "pre-training",
+      "target": "pre-training",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "prior belief",
+      "target": "prior belief",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "proxy labels",
+      "target": "proxy labels",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "quantization",
+      "target": "quantization",
+      "note": "training"
+    },
+    {
+      "source": "response set",
+      "target": "response set",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "router agent",
+      "target": "router agent",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "scikit-learn",
+      "target": "scikit-learn",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "squared loss",
+      "target": "squared loss",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "stationarity",
+      "target": "stationarity",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "training set",
+      "target": "training set",
+      "note": "data"
+    },
+    {
+      "source": "underfitting",
+      "target": "underfitting",
+      "note": "training"
+    },
+    {
+      "source": "weight decay",
+      "target": "weight decay",
+      "note": "training"
+    },
+    {
+      "source": "weighted sum",
+      "target": "weighted sum",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "A/B testing",
+      "target": "A/B testing",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "Bayes' Rule",
+      "target": "Bayes kuralı",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Correlation",
+      "target": "korelasyon",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Cross-Modal",
+      "target": "modlar arası",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Dot Product",
+      "target": "iç çarpım / noktasal çarpım",
+      "count": 0,
+      "status": "approved",
+      "origin": "user",
+      "note": ""
+    },
+    {
+      "source": "Eigenvector",
+      "target": "özvektör",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Expectation",
+      "target": "beklenen değer",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Filter Bank",
+      "target": "filtre bankası",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Flash model",
+      "target": "Flash model",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "Image Patch",
+      "target": "görüntü parçası",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Image Plane",
+      "target": "görüntü düzlemi",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Notebook LM",
+      "target": "Notebook LM",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "Probability",
+      "target": "olasılık",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Recognition",
+      "target": "tanıma",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Stereo Pair",
+      "target": "stereo görüntü çifti",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Tensor rank",
+      "target": "Tensor rank",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "Tensor size",
+      "target": "Tensor size",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "TensorBoard",
+      "target": "TensorBoard",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "TensorStore",
+      "target": "TensorStore",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "Translation",
+      "target": "öteleme",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "autoencoder",
+      "target": "autoencoder",
+      "note": "architecture"
+    },
+    {
+      "source": "camera pose",
+      "target": "camera pose",
+      "note": "geometry"
+    },
+    {
+      "source": "co-training",
+      "target": "co-training",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "color space",
+      "target": "color space",
+      "note": "imaging"
+    },
+    {
+      "source": "convolution",
+      "target": "convolution",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "dense layer",
+      "target": "dense layer",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "edge device",
+      "target": "edge device",
+      "note": "engineering"
+    },
+    {
+      "source": "exact match",
+      "target": "exact match",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "feature map",
+      "target": "feature map",
+      "note": "architecture"
+    },
+    {
+      "source": "feature set",
+      "target": "feature set",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "fine-tuning",
+      "target": "fine-tuning",
+      "note": "training"
+    },
+    {
+      "source": "forget gate",
+      "target": "forget gate",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "input layer",
+      "target": "input layer",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "item matrix",
+      "target": "item matrix",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "max pooling",
+      "target": "max pooling",
+      "note": "architecture"
+    },
+    {
+      "source": "open source",
+      "target": "open source",
+      "note": "engineering"
+    },
+    {
+      "source": "overfitting",
+      "target": "overfitting",
+      "note": "training"
+    },
+    {
+      "source": "packed data",
+      "target": "packed data",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "point cloud",
+      "target": "point cloud",
+      "note": "geometry"
+    },
+    {
+      "source": "pretraining",
+      "target": "pretraining",
+      "note": "training"
+    },
+    {
+      "source": "subsampling",
+      "target": "subsampling",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "transformer",
+      "target": "transformer",
+      "note": "architecture"
+    },
+    {
+      "source": "upweighting",
+      "target": "upweighting",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "user matrix",
+      "target": "user matrix",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "vibe coding",
+      "target": "vibe coding",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "Coordinate",
+      "target": "koordinat",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Covariance",
+      "target": "kovaryans",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Data Point",
+      "target": "veri noktası / örnek",
+      "count": 0,
+      "status": "approved",
+      "origin": "user",
+      "note": ""
+    },
+    {
+      "source": "Eigenvalue",
+      "target": "özdeğer",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Flaxformer",
+      "target": "Flaxformer",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "Flow Field",
+      "target": "akış alanı",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Irradiance",
+      "target": "ışınım / ışınım yoğunluğu",
+      "count": 0,
+      "status": "approved",
+      "origin": "user",
+      "note": ""
+    },
+    {
+      "source": "Likelihood",
+      "target": "olabilirlik",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Mask R-CNN",
+      "target": "Mask R-CNN",
+      "note": "acronym"
+    },
+    {
+      "source": "Multimodal",
+      "target": "çok modlu",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Orthogonal",
+      "target": "ortogonal / dik",
+      "count": 0,
+      "status": "approved",
+      "origin": "user",
+      "note": ""
+    },
+    {
+      "source": "Prediction",
+      "target": "tahmin",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Projection",
+      "target": "izdüşüm / projeksiyon",
+      "count": 0,
+      "status": "approved",
+      "origin": "user",
+      "note": ""
+    },
+    {
+      "source": "Q-function",
+      "target": "Q-function",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "Q-learning",
+      "target": "Q-learning",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "Resolution",
+      "target": "çözünürlük",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "SavedModel",
+      "target": "SavedModel",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "TPU device",
+      "target": "TPU device",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "TPU worker",
+      "target": "TPU worker",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "TensorFlow",
+      "target": "TensorFlow",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "anchor box",
+      "target": "anchor box",
+      "note": "metric"
+    },
+    {
+      "source": "annotation",
+      "target": "annotation",
+      "note": "data"
+    },
+    {
+      "source": "base model",
+      "target": "base model",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "batch size",
+      "target": "batch size",
+      "note": "training"
+    },
+    {
+      "source": "bottleneck",
+      "target": "bottleneck",
+      "note": "architecture"
+    },
+    {
+      "source": "checkpoint",
+      "target": "checkpoint",
+      "note": "training"
+    },
+    {
+      "source": "classifier",
+      "target": "classifier",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "clustering",
+      "target": "clustering",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "convex set",
+      "target": "convex set",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "deep model",
+      "target": "deep model",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "deployment",
+      "target": "deployment",
+      "note": "engineering"
+    },
+    {
+      "source": "fast decay",
+      "target": "fast decay",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "focal loss",
+      "target": "focal loss",
+      "note": "training"
+    },
+    {
+      "source": "frame rate",
+      "target": "frame rate",
+      "note": "imaging"
+    },
+    {
+      "source": "guardrails",
+      "target": "guardrails",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "hinge loss",
+      "target": "hinge loss",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "homography",
+      "target": "homography",
+      "note": "geometry"
+    },
+    {
+      "source": "hyperplane",
+      "target": "hyperplane",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "imputation",
+      "target": "imputation",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "loss curve",
+      "target": "loss curve",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "matplotlib",
+      "target": "matplotlib",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "mini-batch",
+      "target": "mini-batch",
+      "note": "training"
+    },
+    {
+      "source": "perceptron",
+      "target": "perceptron",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "perplexity",
+      "target": "perplexity",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "pipelining",
+      "target": "pipelining",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "prompt set",
+      "target": "prompt set",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "re-ranking",
+      "target": "re-ranking",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "throughput",
+      "target": "throughput",
+      "note": "engineering"
+    },
+    {
+      "source": "trajectory",
+      "target": "trajectory",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "upsampling",
+      "target": "upsampling",
+      "note": "imaging"
+    },
+    {
+      "source": "wide model",
+      "target": "wide model",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "3D Motion",
+      "target": "3B hareket",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Attention",
+      "target": "dikkat mekanizması",
+      "count": 0,
+      "status": "approved",
+      "origin": "user",
+      "note": ""
+    },
+    {
+      "source": "Cloud TPU",
+      "target": "Cloud TPU",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "Data Bias",
+      "target": "veri yanlılığı",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "DataFrame",
+      "target": "DataFrame",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "Dimension",
+      "target": "boyut",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Disparity",
+      "target": "disparite / piksel kayması",
+      "count": 0,
+      "status": "approved",
+      "origin": "user",
+      "note": ""
+    },
+    {
+      "source": "Estimator",
+      "target": "Estimator",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "Frequency",
+      "target": "frekans",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Intensity",
+      "target": "yoğunluk / parlaklık değeri",
+      "count": 0,
+      "status": "approved",
+      "origin": "user",
+      "note": ""
+    },
+    {
+      "source": "Laplacian",
+      "target": "laplasyen",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "MobileNet",
+      "target": "MobileNet",
+      "note": "acronym"
+    },
+    {
+      "source": "Parameter",
+      "target": "parametre",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Posterior",
+      "target": "sonsal dağılım",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Precision",
+      "target": "kesinlik",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "R-squared",
+      "target": "R-squared",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "ROC curve",
+      "target": "ROC curve",
+      "note": "metric"
+    },
+    {
+      "source": "RetinaNet",
+      "target": "RetinaNet",
+      "note": "acronym"
+    },
+    {
+      "source": "Smoothing",
+      "target": "yumuşatma",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "SuperGLUE",
+      "target": "SuperGLUE",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "TPU slice",
+      "target": "TPU slice",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "Transpose",
+      "target": "transpoz",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "benchmark",
+      "target": "benchmark",
+      "note": "engineering"
+    },
+    {
+      "source": "bucketing",
+      "target": "bucketing",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "denoising",
+      "target": "denoising",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "depth map",
+      "target": "depth map",
+      "note": "geometry"
+    },
+    {
+      "source": "embedding",
+      "target": "embedding",
+      "note": "architecture"
+    },
+    {
+      "source": "framework",
+      "target": "framework",
+      "note": "engineering"
+    },
+    {
+      "source": "generator",
+      "target": "generator",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "grayscale",
+      "target": "grayscale",
+      "note": "imaging"
+    },
+    {
+      "source": "grounding",
+      "target": "grounding",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "inference",
+      "target": "inference",
+      "note": "engineering"
+    },
+    {
+      "source": "model zoo",
+      "target": "model zoo",
+      "note": "engineering"
+    },
+    {
+      "source": "multitask",
+      "target": "multitask",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "nonlinear",
+      "target": "nonlinear",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "optimizer",
+      "target": "optimizer",
+      "note": "training"
+    },
+    {
+      "source": "real-time",
+      "target": "real-time",
+      "note": "engineering"
+    },
+    {
+      "source": "shrinkage",
+      "target": "shrinkage",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "sketching",
+      "target": "sketching",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "skip-gram",
+      "target": "skip-gram",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "step size",
+      "target": "step size",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "sub-agent",
+      "target": "sub-agent",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "test loss",
+      "target": "test loss",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "text span",
+      "target": "text span",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "tokenizer",
+      "target": "tokenizer",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "3D Point",
+      "target": "3B nokta",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Aliasing",
+      "target": "aliasing / örnekleme bozulması",
+      "count": 0,
+      "status": "approved",
+      "origin": "user",
+      "note": ""
+    },
+    {
+      "source": "Aperture",
+      "target": "diyafram açıklığı",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Contrast",
+      "target": "kontrast",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "DenseNet",
+      "target": "DenseNet",
+      "note": "acronym"
+    },
+    {
+      "source": "Exposure",
+      "target": "pozlama",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "F1 score",
+      "target": "F1 score",
+      "note": "metric"
+    },
+    {
+      "source": "Gradient",
+      "target": "gradyan",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Jacobian",
+      "target": "jacobian matrisi",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Log Loss",
+      "target": "Log Loss",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "Momentum",
+      "target": "Momentum",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "NaN trap",
+      "target": "NaN trap",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "Radiance",
+      "target": "radyans",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Rotation",
+      "target": "dönme",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Sampling",
+      "target": "örnekleme",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "TPU chip",
+      "target": "TPU chip",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "TPU node",
+      "target": "TPU node",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "TPU type",
+      "target": "TPU type",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "Temporal",
+      "target": "zamansal",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Training",
+      "target": "eğitim",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Variance",
+      "target": "varyans",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "ablation",
+      "target": "ablation",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "backbone",
+      "target": "backbone",
+      "note": "architecture"
+    },
+    {
+      "source": "boosting",
+      "target": "boosting",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "centroid",
+      "target": "centroid",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "ensemble",
+      "target": "ensemble",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "k-median",
+      "target": "k-median",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "log-odds",
+      "target": "log-odds",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "pipeline",
+      "target": "pipeline",
+      "note": "engineering"
+    },
+    {
+      "source": "quantile",
+      "target": "quantile",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "sparsity",
+      "target": "sparsity",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "splitter",
+      "target": "splitter",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "test set",
+      "target": "test set",
+      "note": "data"
+    },
+    {
+      "source": "timestep",
+      "target": "timestep",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "toxicity",
+      "target": "toxicity",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "AI slop",
+      "target": "AI slop",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "AdaGrad",
+      "target": "AdaGrad",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "Channel",
+      "target": "kanal",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Feature",
+      "target": "özellik",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Imaging",
+      "target": "görüntüleme",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "L1 loss",
+      "target": "L1 loss",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "L2 loss",
+      "target": "L2 loss",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "Padding",
+      "target": "dolgulama",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "ROUGE-L",
+      "target": "ROUGE-L",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "ROUGE-N",
+      "target": "ROUGE-N",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "ROUGE-S",
+      "target": "ROUGE-S",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "TPU Pod",
+      "target": "TPU Pod",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "Texture",
+      "target": "doku",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "agentic",
+      "target": "agentic",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "bagging",
+      "target": "bagging",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "binning",
+      "target": "binning",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "dataset",
+      "target": "dataset",
+      "note": "data"
+    },
+    {
+      "source": "decoder",
+      "target": "decoder",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "dropout",
+      "target": "dropout",
+      "note": "architecture"
+    },
+    {
+      "source": "encoder",
+      "target": "encoder",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "k-means",
+      "target": "k-means",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "latency",
+      "target": "latency",
+      "note": "engineering"
+    },
+    {
+      "source": "pooling",
+      "target": "pooling",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "softmax",
+      "target": "softmax",
+      "note": "acronym"
+    },
+    {
+      "source": "trigram",
+      "target": "trigram",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "AutoML",
+      "target": "AutoML",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "Camera",
+      "target": "kamera",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Column",
+      "target": "sütun",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Fiddle",
+      "target": "Fiddle",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "Filter",
+      "target": "filtre",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Gemini",
+      "target": "Gemini",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "Height",
+      "target": "yükseklik",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Kernel",
+      "target": "çekirdek / filtre çekirdeği",
+      "count": 0,
+      "status": "approved",
+      "origin": "user",
+      "note": ""
+    },
+    {
+      "source": "Matrix",
+      "target": "matris",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Motion",
+      "target": "hareket",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "N-gram",
+      "target": "N-gram",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "Output",
+      "target": "çıktı",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Praxis",
+      "target": "Praxis",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "RANSAC",
+      "target": "RANSAC",
+      "note": "acronym"
+    },
+    {
+      "source": "ReCoRD",
+      "target": "ReCoRD",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "Recall",
+      "target": "duyarlılık / yakalama oranı",
+      "count": 0,
+      "status": "approved",
+      "origin": "user",
+      "note": ""
+    },
+    {
+      "source": "ResNet",
+      "target": "ResNet",
+      "note": "acronym"
+    },
+    {
+      "source": "Scalar",
+      "target": "skaler",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Sensor",
+      "target": "sensör",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Signal",
+      "target": "sinyal",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Target",
+      "target": "hedef",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Vector",
+      "target": "vektör",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Vertex",
+      "target": "Vertex",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "Weight",
+      "target": "ağırlık",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "bigram",
+      "target": "bigram",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "i.i.d.",
+      "target": "i.i.d.",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "logits",
+      "target": "logits",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "neuron",
+      "target": "neuron",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "pandas",
+      "target": "pandas",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "plugin",
+      "target": "plugin",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "stride",
+      "target": "stride",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "tensor",
+      "target": "tensor",
+      "note": "engineering"
+    },
+    {
+      "source": "Basis",
+      "target": "baz / taban",
+      "count": 0,
+      "status": "approved",
+      "origin": "user",
+      "note": ""
+    },
+    {
+      "source": "Batch",
+      "target": "mini veri grubu",
+      "count": 0,
+      "status": "approved",
+      "origin": "user",
+      "note": ""
+    },
+    {
+      "source": "BoolQ",
+      "target": "BoolQ",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "Depth",
+      "target": "derinlik",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Epoch",
+      "target": "epoch / eğitim turu",
+      "count": 0,
+      "status": "approved",
+      "origin": "user",
+      "note": ""
+    },
+    {
+      "source": "Focus",
+      "target": "odak",
+      "count": 0,
+      "status": "approved",
+      "origin": "user",
+      "note": ""
+    },
+    {
+      "source": "Frame",
+      "target": "kare",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Gemma",
+      "target": "Gemma",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "Image",
+      "target": "görüntü",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Index",
+      "target": "indeks",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Input",
+      "target": "girdi",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Keras",
+      "target": "Keras",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "Label",
+      "target": "etiket",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Layer",
+      "target": "katman",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "MNIST",
+      "target": "MNIST",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "Model",
+      "target": "Model",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Noise",
+      "target": "gürültü",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "NumPy",
+      "target": "NumPy",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "Optax",
+      "target": "Optax",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "Pixel",
+      "target": "piksel",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Prior",
+      "target": "önsel dağılım",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Query",
+      "target": "sorgu vektörü",
+      "count": 0,
+      "status": "approved",
+      "origin": "user",
+      "note": ""
+    },
+    {
+      "source": "R-CNN",
+      "target": "R-CNN",
+      "note": "acronym"
+    },
+    {
+      "source": "SQuAD",
+      "target": "SQuAD",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "Saver",
+      "target": "Saver",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "Scale",
+      "target": "ölçek",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Shape",
+      "target": "şekil / boyut yapısı",
+      "count": 0,
+      "status": "approved",
+      "origin": "user",
+      "note": ""
+    },
+    {
+      "source": "Slice",
+      "target": "dilim",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Token",
+      "target": "token / veri parçası",
+      "count": 0,
+      "status": "approved",
+      "origin": "user",
+      "note": ""
+    },
+    {
+      "source": "U-Net",
+      "target": "U-Net",
+      "note": "acronym"
+    },
+    {
+      "source": "Ultra",
+      "target": "Ultra",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "Value",
+      "target": "değer vektörü",
+      "count": 0,
+      "status": "approved",
+      "origin": "user",
+      "note": ""
+    },
+    {
+      "source": "Width",
+      "target": "genişlik",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "evals",
+      "target": "evals",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "rater",
+      "target": "rater",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "shard",
+      "target": "shard",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "voxel",
+      "target": "voxel",
+      "note": "geometry"
+    },
+    {
+      "source": "Adam",
+      "target": "Adam",
+      "note": "acronym"
+    },
+    {
+      "source": "Bias",
+      "target": "bias / sapma terimi",
+      "count": 0,
+      "status": "approved",
+      "origin": "user",
+      "note": ""
+    },
+    {
+      "source": "Blur",
+      "target": "bulanıklaştırma",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "CLIP",
+      "target": "CLIP",
+      "note": "acronym"
+    },
+    {
+      "source": "COPA",
+      "target": "COPA",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "Edge",
+      "target": "kenar",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "Flax",
+      "target": "Flax",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "LSTM",
+      "target": "LSTM",
+      "note": "acronym"
+    },
+    {
+      "source": "Lens",
+      "target": "lens / mercek",
+      "count": 0,
+      "status": "approved",
+      "origin": "user",
+      "note": ""
+    },
+    {
+      "source": "LoRA",
+      "target": "LoRA",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "Loss",
+      "target": "kayıp / hata",
+      "count": 0,
+      "status": "approved",
+      "origin": "user",
+      "note": ""
+    },
+    {
+      "source": "MBPP",
+      "target": "MBPP",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "MMIT",
+      "target": "MMIT",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "Mean",
+      "target": "ortalama",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "NORA",
+      "target": "NORA",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "Nano",
+      "target": "Nano",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "NeRF",
+      "target": "NeRF",
+      "note": "acronym"
+    },
+    {
+      "source": "Norm",
+      "target": "Norm",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "PaLM",
+      "target": "PaLM",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "Rank",
+      "target": "rank / rütbe",
+      "count": 0,
+      "status": "approved",
+      "origin": "user",
+      "note": ""
+    },
+    {
+      "source": "ReLU",
+      "target": "ReLU",
+      "note": "acronym"
+    },
+    {
+      "source": "SIFT",
+      "target": "SIFT",
+      "note": "acronym"
+    },
+    {
+      "source": "SLAM",
+      "target": "SLAM",
+      "note": "acronym"
+    },
+    {
+      "source": "SPMD",
+      "target": "SPMD",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "SURF",
+      "target": "SURF",
+      "note": "acronym"
+    },
+    {
+      "source": "YOLO",
+      "target": "YOLO",
+      "note": "acronym"
+    },
+    {
+      "source": "pjit",
+      "target": "pjit",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "pmap",
+      "target": "pmap",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "API",
+      "target": "API",
+      "note": "acronym"
+    },
+    {
+      "source": "CNN",
+      "target": "CNN",
+      "note": "acronym"
+    },
+    {
+      "source": "CPU",
+      "target": "CPU",
+      "note": "acronym"
+    },
+    {
+      "source": "DQN",
+      "target": "DQN",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "GAN",
+      "target": "GAN",
+      "note": "acronym"
+    },
+    {
+      "source": "GPU",
+      "target": "GPU",
+      "note": "acronym"
+    },
+    {
+      "source": "GRU",
+      "target": "GRU",
+      "note": "acronym"
+    },
+    {
+      "source": "HOG",
+      "target": "HOG",
+      "note": "acronym"
+    },
+    {
+      "source": "IoU",
+      "target": "IoU",
+      "note": "acronym"
+    },
+    {
+      "source": "JAX",
+      "target": "JAX",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "Key",
+      "target": "anahtar vektörü",
+      "count": 0,
+      "status": "approved",
+      "origin": "user",
+      "note": ""
+    },
+    {
+      "source": "LIT",
+      "target": "LIT",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "LLM",
+      "target": "LLM",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "MLP",
+      "target": "MLP",
+      "note": "acronym"
+    },
+    {
+      "source": "MOE",
+      "target": "MOE",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "NLP",
+      "target": "NLP",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "NLU",
+      "target": "NLU",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "NMS",
+      "target": "NMS",
+      "note": "acronym"
+    },
+    {
+      "source": "ORA",
+      "target": "ORA",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "ORB",
+      "target": "ORB",
+      "note": "acronym"
+    },
+    {
+      "source": "PLM",
+      "target": "PLM",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "Pax",
+      "target": "Pax",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "Pro",
+      "target": "Pro",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "RAG",
+      "target": "RAG",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "RGB",
+      "target": "kırmızı-Yeşil-Mavi",
+      "count": 0,
+      "status": "approved",
+      "origin": "user",
+      "note": ""
+    },
+    {
+      "source": "RNN",
+      "target": "RNN",
+      "note": "acronym"
+    },
+    {
+      "source": "RTE",
+      "target": "RTE",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "Row",
+      "target": "satır",
+      "note": "user-xlsx"
+    },
+    {
+      "source": "SAM",
+      "target": "SAM",
+      "note": "acronym"
+    },
+    {
+      "source": "SGD",
+      "target": "SGD",
+      "note": "acronym"
+    },
+    {
+      "source": "SSD",
+      "target": "SSD",
+      "note": "acronym"
+    },
+    {
+      "source": "T5X",
+      "target": "T5X",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "TPU",
+      "target": "TPU",
+      "note": "acronym"
+    },
+    {
+      "source": "TTL",
+      "target": "TTL",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "UCR",
+      "target": "UCR",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "VGG",
+      "target": "VGG",
+      "note": "acronym"
+    },
+    {
+      "source": "ViT",
+      "target": "ViT",
+      "note": "acronym"
+    },
+    {
+      "source": "WMT",
+      "target": "WMT",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "WSC",
+      "target": "WSC",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "WiC",
+      "target": "WiC",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "mAP",
+      "target": "mAP",
+      "note": "acronym"
+    },
+    {
+      "source": "AR",
+      "target": "AR",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "CB",
+      "target": "CB",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "F1",
+      "target": "F1",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "ML",
+      "target": "ML",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "MT",
+      "target": "MT",
+      "note": "google-ml-glossary"
+    },
+    {
+      "source": "T5",
+      "target": "T5",
+      "note": "google-ml-glossary"
+    }
+  ]
+}

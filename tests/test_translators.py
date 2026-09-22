@@ -537,7 +537,7 @@ async def test_deepl_prepare_creates_when_absent_with_clean_entries() -> None:
 
 
 async def test_a_glossary_of_only_identity_entries_still_binds() -> None:
-    """The shape of ``glossaries/ai-ml.en-tr.json``: every term maps to itself."""
+    """The shape of the bulk of ``glossaries/terms.en-tr.json``: a term maps to itself."""
     client = FakeDeepLClient()
     g = glossary(("computer vision", "computer vision"), ("object detection", "object detection"))
     binding = unwrap(await make_deepl(client).prepare(g, "run"))
