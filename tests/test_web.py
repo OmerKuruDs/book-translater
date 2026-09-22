@@ -79,6 +79,7 @@ def upload(
     mode: str = "reflow",
     glossary: Sequence[str] = (),
     estimate: bool = False,
+    output_dir: str = "",
 ) -> Any:
     return client.post(
         "/api/jobs",
@@ -87,6 +88,7 @@ def upload(
         data={
             "mode": mode,
             "glossary": list(glossary),
+            "output_dir": output_dir,
             "estimate": "true" if estimate else "false",
         },
     )
@@ -550,3 +552,104 @@ def test_the_page_offers_the_files_of_a_degraded_run_instead_of_hiding_them(
     branch = page.split('if (job.phase === "error")', 1)[1].split("renderProgress", 1)[0]
     assert "outputs" in branch, branch  # it looks at what was produced
     assert branch.index('panels("result")') < branch.index("fail("), branch
+
+
+# --------------------------------------------------------------------------- #
+# Choosing where the job writes
+# --------------------------------------------------------------------------- #
+
+
+def test_a_chosen_directory_receives_the_whole_job(
+    tmp_path: Path, overlay_pdfs: Dict[str, Path]
+) -> None:
+    """A finished book in a folder named after a random token is no use to anybody."""
+    client = make_client(tmp_path)
+    target = tmp_path / "kitaplar" / "opencv"
+
+    job = upload(client, overlay_pdfs["overlay_styles"], output_dir=str(target)).json()
+
+    assert job["phase"] == "done", job
+    assert Path(job["output_dir"]) == target.resolve()
+    assert (target / "input.pdf").is_file()
+    assert (target / "translated_book.md").is_file()
+    assert not list((tmp_path / "web-jobs").glob("*"))  # nothing under the work root
+
+    # the download still resolves against the chosen directory
+    response = client.get(f"/api/jobs/{job['id']}/download/markdown")
+    assert response.status_code == 200
+    assert response.content == (target / "translated_book.md").read_bytes()
+
+
+def test_a_relative_directory_lands_under_the_work_root(
+    tmp_path: Path, overlay_pdfs: Dict[str, Path]
+) -> None:
+    client = make_client(tmp_path)
+
+    job = upload(client, overlay_pdfs["overlay_styles"], output_dir="ceviriler/ilk").json()
+
+    assert Path(job["output_dir"]) == (tmp_path / "web-jobs" / "ceviriler" / "ilk").resolve()
+
+
+def test_leaving_it_blank_keeps_the_directory_named_after_the_job(
+    tmp_path: Path, overlay_pdfs: Dict[str, Path]
+) -> None:
+    client = make_client(tmp_path)
+
+    job = upload(client, overlay_pdfs["overlay_styles"]).json()
+
+    assert Path(job["output_dir"]) == tmp_path / "web-jobs" / job["id"]
+
+
+def test_a_refused_upload_never_deletes_a_directory_the_user_already_had(
+    tmp_path: Path,
+) -> None:
+    """``discard`` removes the job directory, which is safe for one the manager made and
+    destructive for one the person chose. A folder that existed before the upload keeps
+    its contents."""
+    client = make_client(tmp_path)
+    target = tmp_path / "onemli"
+    target.mkdir()
+    keeper = target / "translation_state.db"  # makes it a resumable output directory
+    keeper.write_bytes(b"")
+    note = target / "notlar.txt"
+    note.write_text("silinmemeli", encoding="utf-8")
+
+    refused = client.post(
+        "/api/jobs",
+        files={"file": ("book.pdf", b"not a pdf at all", "application/pdf")},
+        data={"mode": "reflow", "output_dir": str(target), "estimate": "false"},
+    )
+
+    assert refused.status_code == 400
+    assert target.is_dir()
+    assert note.read_text(encoding="utf-8") == "silinmemeli"
+    assert not (target / "input.pdf").exists()  # the rejected upload is cleaned up
+
+
+def test_a_directory_holding_other_work_is_refused(
+    tmp_path: Path, overlay_pdfs: Dict[str, Path]
+) -> None:
+    """Writing a pipeline's state into a folder that belongs to something else loses
+    track of what is whose; an empty or already-translated directory is fine."""
+    occupied = tmp_path / "belgelerim"
+    occupied.mkdir()
+    (occupied / "vergi.pdf").write_bytes(b"%PDF-1.7\n")
+    client = make_client(tmp_path)
+
+    refused = upload(client, overlay_pdfs["overlay_styles"], output_dir=str(occupied))
+
+    assert refused.status_code == 400
+    assert "klasör" in refused.json()["error"]["message"].lower()
+    assert (occupied / "vergi.pdf").exists()
+    assert not (occupied / "input.pdf").exists()
+
+
+def test_a_file_path_is_not_a_directory(tmp_path: Path, overlay_pdfs: Dict[str, Path]) -> None:
+    a_file = tmp_path / "rapor.txt"
+    a_file.write_text("x", encoding="utf-8")
+    client = make_client(tmp_path)
+
+    refused = upload(client, overlay_pdfs["overlay_styles"], output_dir=str(a_file))
+
+    assert refused.status_code == 400
+    assert a_file.read_text(encoding="utf-8") == "x"

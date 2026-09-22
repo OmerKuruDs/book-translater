@@ -33,11 +33,12 @@ from rich.console import Console
 from .. import __version__
 from ..config import Settings, load_settings, margins_from_source, parse_pdf_margin
 from ..domain.models import JobSummary
-from ..domain.result import AppError, Err, ErrorCode, ErrorScope, Ok, Result
+from ..domain.result import AppError, Err, ErrorCode, ErrorScope, Ok, Result, err
 from ..exporters.base import ExportOptions
 from ..extractors.base import FigureOptions, figure_options_from_settings
 from ..logging_setup import RedactionFilter, setup_logging
 from ..pipeline.orchestrator import (
+    DB_FILE_NAME,
     EXIT_FAILURE,
     EXIT_SUCCESS,
     LOGS_DIR_NAME,
@@ -251,6 +252,9 @@ class Job:
     filename: str
     mode: str
     glossaries: List[str]
+    #: True when the manager made ``directory``; a directory the user already had is
+    #: never removed on ``discard``.
+    created_dir: bool = True
     created_at: float = field(default_factory=time.time)
     phase: str = PHASE_NEW
     progress: JobProgress = field(default_factory=JobProgress)
@@ -327,9 +331,62 @@ class JobManager:
 
     # -- job lifecycle ----------------------------------------------------- #
 
-    def create(self, *, filename: str, mode: str, glossaries: Sequence[str]) -> Job:
+    def resolve_output_dir(self, raw: str) -> Result[Optional[Path]]:
+        """Where a job should write, from what the form sent.
+
+        Blank answers ``None``: the caller then keeps the default, a directory named
+        after the job under the work root. Anything else is taken as the user's choice:
+        absolute as given, relative to the work root otherwise.
+
+        An existing directory is accepted only when it is empty or already holds a
+        translation state database, so a run never scatters its files over a folder that
+        belongs to something else - and resuming a paused job still works.
+        """
+        text = raw.strip()
+        if not text:
+            return Ok(None)
+        if "\x00" in text:
+            return err(ErrorCode.INPUT_UNREADABLE, "klasör yolu geçersiz", ErrorScope.USER)
+        candidate = Path(text).expanduser()
+        if not candidate.is_absolute():
+            candidate = self.work_root / candidate
+        try:
+            resolved = candidate.resolve()
+            exists = resolved.exists()
+            is_dir = resolved.is_dir() if exists else False
+            occupied = bool(list(resolved.iterdir())) if is_dir else False
+            is_output = (resolved / DB_FILE_NAME).exists() if is_dir else False
+        except OSError as exc:
+            return err(
+                ErrorCode.INPUT_UNREADABLE,
+                f"klasör okunamadı: {exc.__class__.__name__}",
+                ErrorScope.USER,
+            )
+        if exists and not is_dir:
+            return err(
+                ErrorCode.INPUT_UNREADABLE,
+                "bu yol bir klasör değil, dosya",
+                ErrorScope.USER,
+            )
+        if occupied and not is_output:
+            return err(
+                ErrorCode.INPUT_UNREADABLE,
+                "klasör dolu ve bir çeviri çıktısı değil; boş ya da yeni bir klasör seçin",
+                ErrorScope.USER,
+            )
+        return Ok(resolved)
+
+    def create(
+        self,
+        *,
+        filename: str,
+        mode: str,
+        glossaries: Sequence[str],
+        output_dir: Optional[Path] = None,
+    ) -> Job:
         job_id = secrets.token_hex(8)
-        directory = self.work_root / job_id
+        directory = Path(output_dir) if output_dir is not None else self.work_root / job_id
+        created = not directory.exists()
         directory.mkdir(parents=True, exist_ok=True)
         job = Job(
             id=job_id,
@@ -337,6 +394,7 @@ class JobManager:
             filename=filename,
             mode=mode,
             glossaries=list(glossaries),
+            created_dir=created,
         )
         with self._lock:
             self._jobs[job_id] = job
@@ -347,10 +405,17 @@ class JobManager:
             return self._jobs.get(job_id)
 
     def discard(self, job: Job) -> None:
-        """Forget a job whose upload was refused and remove its (empty) directory."""
+        """Forget a job whose upload was refused.
+
+        The directory goes only when the manager made it. A directory the user chose and
+        already had is left alone - a refused upload must not delete someone's folder.
+        """
         with self._lock:
             self._jobs.pop(job.id, None)
-        shutil.rmtree(job.directory, ignore_errors=True)
+        if job.created_dir:
+            shutil.rmtree(job.directory, ignore_errors=True)
+        else:
+            job.input_path.unlink(missing_ok=True)
 
     def start(self, job: Job, *, dry_run: bool) -> None:
         """Queue the pipeline for ``job``; returns as soon as the body is scheduled."""
@@ -375,6 +440,7 @@ class JobManager:
                 "filename": job.filename,
                 "mode": job.mode,
                 "glossaries": list(job.glossaries),
+                "output_dir": str(job.directory),
                 "phase": job.phase,
                 "phase_label": PHASE_LABELS.get(job.phase, job.phase),
                 "stage": progress.stage,

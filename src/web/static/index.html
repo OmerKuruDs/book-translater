@@ -82,6 +82,11 @@
   dl.facts dt { color: var(--muted); font-size: 14px; }
   dl.facts dd { margin: 0; font-variant-numeric: tabular-nums; }
   label.check { display: block; margin: 4px 0; font-size: 15px; }
+  #output-dir { width: 100%; box-sizing: border-box; padding: 7px 9px; font-size: 14px;
+                font-family: ui-monospace, Consolas, monospace; border: 1px solid var(--line);
+                border-radius: 6px; background: #fff; color: inherit; }
+  dd.path { font-family: ui-monospace, Consolas, monospace; font-size: 13px;
+            word-break: break-all; }
   .downloads { list-style: none; padding: 0; margin: 12px 0 0; }
   .downloads li { margin: 6px 0; }
   .downloads a { color: var(--accent); }
@@ -133,6 +138,12 @@
     </fieldset>
 
     <fieldset>
+      <legend>4 &middot; Çıktı klasörü</legend>
+      <input type="text" id="output-dir" spellcheck="false" autocomplete="off">
+      <p class="note">Çeviri, durum veritabanı ve görseller buraya yazılır. Boş bırakırsanız her iş için yeni bir klasör açılır. Var olan bir çeviri klasörünü yazarsanız iş kaldığı yerden sürer.</p>
+    </fieldset>
+
+    <fieldset>
       <legend>4 &middot; Başlat</legend>
       <label class="row">
         <input type="checkbox" id="estimate" checked>
@@ -174,6 +185,7 @@
       <dt>Bu çalıştırmada gönderilen</dt><dd><span id="chars-run">0</span> karakter</dd>
       <dt>Bu iş için toplam</dt><dd><span id="chars-total">0</span> karakter</dd>
       <dt>Çıkış kodu</dt><dd id="exit-code">0</dd>
+      <dt>Klasör</dt><dd id="result-dir" class="path"></dd>
     </dl>
     <ul class="downloads" id="downloads"></ul>
     <ul class="warnings hidden" id="warnings"></ul>
@@ -246,6 +258,9 @@
 
   fetch("/api/config").then(function (r) { return r.json(); }).then(function (cfg) {
     el("max-mb").textContent = cfg.max_upload_mb;
+    if (cfg.work_root) {
+      el("output-dir").placeholder = cfg.work_root + " (varsayılan)";
+    }
     var list = el("glossary-list");
     var names = cfg.glossaries || [];
     if (names.length === 0) {
@@ -304,6 +319,7 @@
       document.querySelectorAll(".glossary-pick:checked"),
       function (box) { data.append("glossary", box.value); }
     );
+    data.append("output_dir", el("output-dir").value);
     data.append("estimate", el("estimate").checked ? "true" : "false");
     el("go").disabled = true;
     panels("progress");
@@ -383,6 +399,7 @@
     el("chars-run").textContent = r.chars_sent_this_run || 0;
     el("chars-total").textContent = r.chars_sent_total || 0;
     el("exit-code").textContent = r.exit_code;
+    el("result-dir").textContent = job.output_dir || "";
     var list = el("downloads");
     list.textContent = "";
     (r.outputs || []).forEach(function (output) {

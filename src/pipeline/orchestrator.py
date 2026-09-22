@@ -183,6 +183,7 @@ __all__ = [
     "EXIT_PARTIAL",
     "EXIT_PAUSED",
     "EXIT_SUCCESS",
+    "DB_FILE_NAME",
     "EXPORT_ERROR_PREFIX",
     "ExportOutcome",
     "ExtractOutcome",

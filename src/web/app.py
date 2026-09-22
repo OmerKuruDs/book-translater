@@ -19,6 +19,7 @@ from typing import Any, Dict, List, Optional
 from fastapi import FastAPI, File, Form, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
 
+from ..domain.result import Err
 from ..pipeline.orchestrator import MODE_OVERLAY, MODE_REFLOW
 from .jobs import (
     INPUT_NAME,
@@ -58,6 +59,9 @@ MODE_FIELD = Form(MODE_OVERLAY)
 #: Repeated, one value per chosen glossary: a book usually needs more than one
 #: vocabulary, and picking only one silently drops the rest of the terms.
 GLOSSARY_FIELD = Form(None)
+#: Where the job writes. Blank keeps a fresh directory under the work root; the
+#: browser cannot open a folder picker, so this is the path the person typed.
+OUTPUT_DIR_FIELD = Form("")
 ESTIMATE_FIELD = Form(True)
 
 
@@ -158,6 +162,7 @@ def create_app(
         file: UploadFile = FILE_FIELD,
         mode: str = MODE_FIELD,
         glossary: Optional[List[str]] = GLOSSARY_FIELD,
+        output_dir: str = OUTPUT_DIR_FIELD,
         estimate: bool = ESTIMATE_FIELD,
     ) -> Response:
         if mode not in MODES:
@@ -178,7 +183,17 @@ def create_app(
                     f"Sözlükler {manager.glossary_dir} altındaki .json dosyalarından seçilir.",
                 )
 
-        job = manager.create(filename=name, mode=mode, glossaries=selected)
+        chosen_dir = manager.resolve_output_dir(output_dir)
+        if isinstance(chosen_dir, Err):
+            return _json_error(
+                400,
+                f"Çıktı klasörü kullanılamıyor: {chosen_dir.error.message}",
+                f"Varsayılan için boş bırakın ({manager.work_root} altına yazılır).",
+            )
+
+        job = manager.create(
+            filename=name, mode=mode, glossaries=selected, output_dir=chosen_dir.value
+        )
         stored = await _store_upload(file, job, limit)
         if stored is not None:
             manager.discard(job)
