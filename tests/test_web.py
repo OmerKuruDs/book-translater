@@ -689,3 +689,17 @@ def test_the_page_shows_pages_while_exporting(tmp_path: Path) -> None:
     # the bar follows pages while exporting instead of the units that stopped moving
     assert "job.pages_done / job.pages_total" in page
     assert 'var exporting = job.stage === "export"' in page
+
+
+def test_the_page_says_when_it_has_lost_the_server(tmp_path: Path) -> None:
+    """A poll that swallows every network error leaves a dead server looking like a
+    working one: the counters sit at their last values and the heading still reads
+    "Çalışıyor". That is how a translation which had never started appeared to be in
+    progress for hours."""
+    page = make_client(tmp_path).get("/").text
+
+    assert "state.misses" in page
+    assert "ulaşılamıyor" in page  # the notice, not a silent comment
+    # a single blip must not raise it
+    assert "LOST_AFTER = 5" in page
+    assert "state.misses >= LOST_AFTER" in page

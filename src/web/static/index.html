@@ -95,6 +95,7 @@
   .box-err h2 { color: var(--err); }
   .box-err .msg { font-weight: 600; }
   #result-note { color: var(--warn); font-weight: 600; margin: 0 0 12px; }
+  #offline { color: var(--err); font-weight: 600; margin: 10px 0 0; font-size: 14px; }
   .box-err .hint { margin-top: 8px; color: var(--ink); }
   .box-err .code { margin-top: 8px; font-size: 13px; color: var(--muted);
                    font-family: ui-monospace, Consolas, monospace; }
@@ -164,6 +165,7 @@
     <div class="stages" id="stages"></div>
     <div class="bar"><div id="bar-fill"></div></div>
     <p class="counters" id="counters"></p>
+    <p class="msg hidden" id="offline"></p>
   </section>
 
   <section id="estimate-panel" class="hidden">
@@ -357,17 +359,33 @@
 
   function startPolling() {
     stopPolling();
+    state.misses = 0;
+    show(el("offline"), false);
     state.timer = window.setInterval(poll, 1000);
   }
   function stopPolling() {
     if (state.timer !== null) { window.clearInterval(state.timer); state.timer = null; }
   }
+  //  A single failed poll means nothing; a run of them means the server is gone.
+  //  Staying silent made a dead server look like a working one.
+  var LOST_AFTER = 5;
+
   function poll() {
     if (!state.jobId) { return; }
     fetch("/api/jobs/" + encodeURIComponent(state.jobId)).then(function (r) {
       if (!r.ok) { return readError(r); }
+      state.misses = 0;
+      show(el("offline"), false);
       return r.json().then(apply);
-    }).catch(function () { /* geçici ağ hatası: bir sonraki yoklamada yeniden denenir */ });
+    }).catch(function () {
+      state.misses = (state.misses || 0) + 1;
+      if (state.misses >= LOST_AFTER) {
+        el("offline").textContent =
+          "Sunucuya " + state.misses + " saniyedir ulaşılamıyor. " +
+          "Aşağıdaki sayılar son bağlantıdan kalma; iş sürüyor olabilir.";
+        show(el("offline"), true);
+      }
+    });
   }
 
   /* -------------------------------------------------------------- render */
